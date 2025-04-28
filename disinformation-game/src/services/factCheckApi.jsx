@@ -1,6 +1,6 @@
 export async function checkFact(claim) {
   // Utilisez votre propre clé API ici - assurez-vous qu'elle est activée pour l'API Fact Check Tools
-  const API_KEY = "AIzaSyBP6vZo2Aeoz1ogzXibmGQCo8Tk49ozXiA";
+  const API_KEY = "imsofuckingdumb";
 
   // Construction correcte de l'URL selon la documentation officielle
   const url = `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodeURIComponent(claim)}&key=${API_KEY}&languageCode=en`;
