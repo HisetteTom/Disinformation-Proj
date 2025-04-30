@@ -8,16 +8,10 @@ function App() {
         <h1 className="mb-2 text-4xl font-bold text-blue-600">
           Disinformation Game
         </h1>
-        <p className="text-xl text-gray-600">
-          Put your moderation skills to the test!
-        </p>
       </header>
       <main>
         <ModeratorGame />
       </main>
-      <footer className="mt-10 border-t border-gray-200 pt-5 text-center text-sm text-gray-500">
-        <p>Social Media Moderation Simulator &copy; 2025</p>
-      </footer>
     </div>
   );
 }

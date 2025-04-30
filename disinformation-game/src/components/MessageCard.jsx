@@ -25,7 +25,7 @@ function MessageCard({ message, onModerate }) {
           onClick={() => onModerate(message.id, "flag")}
           className="rounded bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
         >
-          Flag as Misinfo
+          Intox
         </button>
         <button
           onClick={() => onModerate(message.id, "factcheck")}

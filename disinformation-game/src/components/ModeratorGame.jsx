@@ -10,54 +10,50 @@ function ModeratorGame() {
   const [score, setScore] = useState(0);
   const [messagesHandled, setMessagesHandled] = useState(0);
   const [loading, setLoading] = useState(false);
-  // New state for limited fact checks
   const [factChecksRemaining, setFactChecksRemaining] = useState(5);
 
   useEffect(() => {
-    // Shuffle messages and load them
     const shuffled = [...messages].sort(() => 0.5 - Math.random());
     setGameMessages(shuffled);
     setCurrentMessage(shuffled[0]);
   }, []);
 
-  // Extract key topics from a message for better API search
-  const extractSearchQuery = (content) => {
-    // Simple approach: extract keywords based on common misinformation topics
+  // Extract all relevant keywords from a message
+  const extractKeywords = (content) => {
     const topicKeywords = {
       vaccines: ["vaccines", "autism", "vaccination", "immunization"],
       climate: ["climate change", "global warming", "hoax"],
       covid: ["covid", "coronavirus", "5g", "microchip"],
       politics: ["election fraud", "stolen election", "voter fraud"],
       health: ["cure cancer", "miracle cure", "weight loss", "belly fat"],
-      conspiracy: [
-        "moon landing",
-        "flat earth",
-        "chemtrails",
-        "government conspiracy",
-      ],
+      conspiracy: ["moon landing", "flat earth", "chemtrails", "government conspiracy"],
     };
 
-    // Convert to lowercase for easier matching
     const lowerContent = content.toLowerCase();
+    let matches = [];
 
-    // Find matching topics
+    // Find all matching keywords
     for (const [topic, keywords] of Object.entries(topicKeywords)) {
       for (const keyword of keywords) {
         if (lowerContent.includes(keyword)) {
-          // Return the first significant match we find
-          return keyword;
+          matches.push(keyword);
         }
       }
     }
 
-    // Fallback: return the first 3-5 words (usually contains the main claim)
-    const words = content.split(" ");
-    return words.slice(0, Math.min(5, words.length)).join(" ");
+    // If no matches found, take first few significant words
+    if (matches.length === 0) {
+      const words = content.split(" ")
+        .filter(word => word.length > 3)
+        .slice(0, 3);
+      matches = [words.join(" ")];
+    }
+
+    return matches;
   };
 
   const handleModeration = async (messageId, action) => {
     if (action === "factcheck") {
-      // Check if we have fact checks remaining
       if (factChecksRemaining <= 0) {
         setFactCheckResult({
           found: false,
@@ -67,62 +63,44 @@ function ModeratorGame() {
       }
 
       setLoading(true);
-      // Use the extracted query for better results
-      const searchQuery = extractSearchQuery(currentMessage.content);
-      console.log("Searching for:", searchQuery);
-      const result = await checkFact(searchQuery);
+      // Use all extracted keywords for better search coverage
+      const keywords = extractKeywords(currentMessage.content);
+      console.log("Searching for keywords:", keywords);
+      const result = await checkFact(keywords.join(" "));
       setFactCheckResult(result);
       setFactChecksRemaining(factChecksRemaining - 1);
       setLoading(false);
       return;
     }
 
-    // Clear fact check results when taking a moderation action
     setFactCheckResult(null);
+    const isDisinformation = Math.random() > 0.5;
 
-    // For approve or flag actions
-    const isDisinformation = Math.random() > 0.5; // In a real game, this would be predetermined
-
-    // Score based on correct moderation
-    if (
-      (isDisinformation && action === "flag") ||
-      (!isDisinformation && action === "approve")
-    ) {
+    if ((isDisinformation && action === "flag") || (!isDisinformation && action === "approve")) {
       setScore(score + 10);
     } else {
       setScore(Math.max(0, score - 5));
     }
 
-    // Move to next message
     setMessagesHandled(messagesHandled + 1);
     if (messagesHandled + 1 < gameMessages.length) {
       setCurrentMessage(gameMessages[messagesHandled + 1]);
     } else {
-      setCurrentMessage(null); // Game over
+      setCurrentMessage(null);
     }
   };
 
-  // Helper function to determine if a claim is likely misinformation based on ratings
   const isMisinfo = (result) => {
     if (!result.claimReview || !result.claimReview.length) return false;
 
     const rating = result.claimReview[0].textualRating.toLowerCase();
     const misinfoTerms = [
-      "false",
-      "pants on fire",
-      "fake",
-      "incorrect",
-      "misleading",
-      "mostly false",
-      "untrue",
-      "not true",
-      "fiction",
-      "deceptive",
-      "misinformation",
-      "hoax",
+      "false", "pants on fire", "fake", "incorrect",
+      "misleading", "mostly false", "untrue", "not true",
+      "fiction", "deceptive", "misinformation", "hoax"
     ];
 
-    return misinfoTerms.some((term) => rating.includes(term));
+    return misinfoTerms.some(term => rating.includes(term));
   };
 
   if (!currentMessage) {
@@ -145,7 +123,7 @@ function ModeratorGame() {
       {/* Main moderation panel */}
       <div className="rounded-lg bg-gray-50 p-6 shadow-md md:col-span-2">
         <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-3">
-          <h1 className="text-2xl font-bold">Social Media Moderator</h1>
+          <h1 className="text-2xl font-bold">Truth Social</h1>
           <div className="rounded-full bg-blue-100 px-4 py-1 font-bold text-blue-600">
             Score: {score}
           </div>
@@ -163,7 +141,7 @@ function ModeratorGame() {
 
         <div className="text-right text-sm text-gray-500">
           <p>
-            Messages moderated: {messagesHandled} / {gameMessages.length}
+            Messages moderes: {messagesHandled} / {gameMessages.length}
           </p>
         </div>
       </div>
@@ -171,17 +149,17 @@ function ModeratorGame() {
       {/* Fact check results panel */}
       <div className="rounded-lg bg-gray-50 p-6 shadow-md">
         <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-          <h2 className="text-xl font-bold">Fact Check Results</h2>
+          <h2 className="text-xl font-bold">Fact Check Resultats</h2>
           <div
             className={`text-sm ${factChecksRemaining <= 1 ? "font-bold text-red-600" : "text-gray-600"}`}
           >
-            {factChecksRemaining} checks remaining
+            {factChecksRemaining} checks restants
           </div>
         </div>
 
         {!factCheckResult && !loading && (
           <p className="text-gray-500 italic">
-            Click "Fact Check" on the message to see results here
+            Cliquez "Fact Check" sur le message pour voir les résultats.
           </p>
         )}
 
@@ -245,13 +223,13 @@ function ModeratorGame() {
                 onClick={() => handleModeration(currentMessage.id, "approve")}
                 className="rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
               >
-                Approve Message
+                Approve
               </button>
               <button
                 onClick={() => handleModeration(currentMessage.id, "flag")}
                 className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
               >
-                Flag as Misinfo
+                Intox
               </button>
             </div>
           </>
@@ -265,13 +243,13 @@ function ModeratorGame() {
                 onClick={() => handleModeration(currentMessage.id, "approve")}
                 className="rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
               >
-                Approve Message
+                Approve
               </button>
               <button
                 onClick={() => handleModeration(currentMessage.id, "flag")}
                 className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
               >
-                Flag as Misinfo
+                Intox
               </button>
             </div>
           </div>

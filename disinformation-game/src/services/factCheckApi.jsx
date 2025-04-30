@@ -1,45 +1,20 @@
 export async function checkFact(claim) {
-  // Utilisez votre propre clé API ici - assurez-vous qu'elle est activée pour l'API Fact Check Tools
-  const API_KEY = "imsofuckingdumb";
-
-  // Construction correcte de l'URL selon la documentation officielle
-  const url = `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodeURIComponent(claim)}&key=${API_KEY}&languageCode=en`;
-
   try {
-    console.log("Calling fact check API with URL:", url);
-
-    const response = await fetch(url, {
-      method: "GET",
+    const response = await fetch('http://localhost:3001/api/factcheck', {
+      method: 'POST',
       headers: {
-        Accept: "application/json",
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ claim })
     });
 
     if (!response.ok) {
       throw new Error(`API returned status: ${response.status}`);
     }
 
-    const data = await response.json();
-    console.log("API response:", data);
-
-    if (data.claims && data.claims.length > 0) {
-      return {
-        found: true,
-        result: data.claims[0],
-        allResults: data.claims,
-      };
-    } else {
-      return {
-        found: false,
-        message: "No fact checks found for this claim.",
-      };
-    }
+    return await response.json();
   } catch (error) {
-    console.error("Error checking facts:", error);
-    return {
-      found: false,
-      error: error.message,
-      message: "Error connecting to fact check service.",
-    };
+    console.error('Error checking fact:', error);
+    throw error;
   }
 }
