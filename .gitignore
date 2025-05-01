@@ -1,0 +1,16 @@
+# Common files to ignore
+.DS_Store
+.env
+.vscode/
+.idea/
+*.log
+
+# Frontend ignores
+frontend-disinformation-game/node_modules/
+frontend-disinformation-game/dist/
+frontend-disinformation-game/dist-ssr/
+frontend-disinformation-game/*.local
+
+# Backend ignores
+backend-disinformation-game/node_modules/
+backend-disinformation-game/.env

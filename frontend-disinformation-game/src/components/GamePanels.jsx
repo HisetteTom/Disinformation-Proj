@@ -1,0 +1,213 @@
+import React from 'react';
+import MessageCard from './MessageCard';
+
+export function LoadingState() {
+  return (
+    <div className="flex justify-center items-center h-64">
+      <p className="text-lg text-gray-600">Loading tweets...</p>
+    </div>
+  );
+}
+
+export function GameOver({ score }) {
+  return (
+    <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
+      <h1 className="mb-4 text-2xl font-bold">Game Over!</h1>
+      <h2 className="mb-6 text-xl">Your final score: {score}</h2>
+      <button
+        onClick={() => window.location.reload()}
+        className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
+      >
+        Play Again
+      </button>
+    </div>
+  );
+}
+
+export function ModerationPanel({ message, handleModeration, loading, messagesHandled, totalMessages, score }) {
+  return (
+    <div className="rounded-lg bg-gray-50 p-6 shadow-md md:col-span-2">
+      <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-3">
+        <h1 className="text-2xl font-bold">Truth Social</h1>
+        <div className="rounded-full bg-blue-100 px-4 py-1 font-bold text-blue-600">
+          Score: {score}
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <MessageCard message={message} onModerate={handleModeration} />
+      </div>
+
+      {loading && (
+        <div className="py-3 text-center text-gray-600 italic">
+          Checking facts...
+        </div>
+      )}
+
+      <div className="text-right text-sm text-gray-500">
+        <p>
+          Messages moderes: {messagesHandled} / {totalMessages}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function FactCheckPanel({ factCheckResult, loading, factChecksRemaining, handleModeration, currentMessageId }) {
+  return (
+    <div className="rounded-lg bg-gray-50 p-6 shadow-md">
+      <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
+        <h2 className="text-xl font-bold">Fact Check Results</h2>
+        <div
+          className={`text-sm ${factChecksRemaining <= 1 ? "font-bold text-red-600" : "text-gray-600"}`}
+        >
+          {factChecksRemaining} checks remaining
+        </div>
+      </div>
+
+      {!factCheckResult && !loading && (
+        <p className="text-gray-500 italic">
+          Click "Fact Check" on the message to see results.
+        </p>
+      )}
+
+      {loading && (
+        <div className="py-3 text-center text-gray-600 italic">
+          Searching for fact checks...
+        </div>
+      )}
+
+      {factCheckResult && factCheckResult.type === 'news' && (
+        <NewsArticles 
+          articles={factCheckResult.articles}
+          onModerate={handleModeration}
+          messageId={currentMessageId}
+        />
+      )}
+
+      {factCheckResult && factCheckResult.found && factCheckResult.type === 'factCheck' && (
+        <FactResults
+          results={factCheckResult.allResults}
+          onModerate={handleModeration}
+          messageId={currentMessageId}
+        />
+      )}
+
+      {factCheckResult && !factCheckResult.found && (
+        <NoResults 
+          message={factCheckResult.message}
+          onModerate={handleModeration}
+          messageId={currentMessageId}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewsArticles({ articles, onModerate, messageId }) {
+  return (
+    <>
+      <h3 className="font-bold text-lg mb-2">Related News Articles</h3>
+      <div className="mb-4 max-h-60 space-y-4 overflow-y-auto">
+        {articles.map((article, index) => (
+          <div key={index} className="rounded-md border border-gray-200 bg-white p-3">
+            <p className="text-sm font-semibold">{article.title}</p>
+            <p className="mb-2 text-sm">{article.description}</p>
+            <div className="mt-2 border-t border-gray-100 pt-2">
+              <p className="text-sm">
+                <span className="font-medium">Source:</span>{" "}
+                {article.source}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Published:</span>{" "}
+                {new Date(article.publishedAt).toLocaleDateString()}
+              </p>
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Read full article →
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+      <ActionButtons onModerate={onModerate} messageId={messageId} />
+    </>
+  );
+}
+
+function FactResults({ results, onModerate, messageId }) {
+  return (
+    <>
+      <div className="mb-4 max-h-60 space-y-4 overflow-y-auto">
+        {results.map((result, index) => (
+          <div
+            key={index}
+            className="rounded-md border border-gray-200 bg-white p-3"
+          >
+            <p className="text-sm font-semibold">
+              {result.claimant || "Unknown source"}
+            </p>
+            <p className="mb-2 text-sm">{result.text}</p>
+
+            {result.claimReview && result.claimReview.length > 0 && (
+              <div className="mt-2 border-t border-gray-100 pt-2">
+                <p className="text-sm">
+                  <span className="font-medium">Rating:</span>{" "}
+                  <span className="font-medium text-amber-600">
+                    {result.claimReview[0].textualRating}
+                  </span>
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">By:</span>{" "}
+                  {result.claimReview[0].publisher?.name ||
+                    "Unknown publisher"}
+                </p>
+                <a
+                  href={result.claimReview[0].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  View fact check →
+                </a>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <ActionButtons onModerate={onModerate} messageId={messageId} />
+    </>
+  );
+}
+
+function NoResults({ message, onModerate, messageId }) {
+  return (
+    <div>
+      <p className="mb-4 text-gray-600">{message}</p>
+      <ActionButtons onModerate={onModerate} messageId={messageId}/>
+    </div>
+  );
+}
+
+function ActionButtons({ onModerate, messageId}) {
+  return (
+    <div className="mt-4 flex gap-3">
+      <button
+        onClick={() => onModerate(messageId, "approve")}
+        className="rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
+      >
+        Approve
+      </button>
+      <button
+        onClick={() => onModerate(messageId, "flag")}
+        className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
+      >
+        {"Flag"}
+      </button>
+    </div>
+  );
+}
