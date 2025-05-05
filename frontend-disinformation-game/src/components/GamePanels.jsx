@@ -1,5 +1,4 @@
 import React from 'react';
-import MessageCard from './MessageCard';
 
 export function LoadingState() {
   return (
@@ -9,13 +8,14 @@ export function LoadingState() {
   );
 }
 
-export function GameOver({ score }) {
+export function GameOver({ score, messagesHandled, onPlayAgain }) {
   return (
     <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
       <h1 className="mb-4 text-2xl font-bold">Game Over!</h1>
-      <h2 className="mb-6 text-xl">Your final score: {score}</h2>
+      <h2 className="mb-2 text-xl">Your final score: {score}</h2>
+      <p className="mb-6 text-gray-600">You flagged {messagesHandled} tweets in 3 minutes!</p>
       <button
-        onClick={() => window.location.reload()}
+        onClick={onPlayAgain}
         className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
       >
         Play Again
@@ -24,38 +24,38 @@ export function GameOver({ score }) {
   );
 }
 
-export function ModerationPanel({ message, handleModeration, loading, messagesHandled, totalMessages, score }) {
+export function TimerDisplay({ timeRemaining, feedSpeed, changeFeedSpeed, score }) {
+  // Convert milliseconds to minutes and seconds
+  const minutes = Math.floor(timeRemaining / 60000);
+  const seconds = Math.floor((timeRemaining % 60000) / 1000);
+  
   return (
-    <div className="rounded-lg bg-gray-50 p-6 shadow-md md:col-span-2">
-      <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-3">
-        <h1 className="text-2xl font-bold">Truth Social</h1>
-        <div className="rounded-full bg-blue-100 px-4 py-1 font-bold text-blue-600">
-          Score: {score}
-        </div>
+    <div className="flex items-center space-x-4">
+      <div className="rounded-full bg-blue-100 px-4 py-1 font-bold text-blue-600">
+        Score: {score}
       </div>
-
-      <div className="mb-6">
-        <MessageCard message={message} onModerate={handleModeration} />
+      <div className="text-lg font-semibold">
+        {minutes}:{seconds.toString().padStart(2, '0')}
       </div>
-
-      {loading && (
-        <div className="py-3 text-center text-gray-600 italic">
-          Checking facts...
-        </div>
-      )}
-
-      <div className="text-right text-sm text-gray-500">
-        <p>
-          Messages moderes: {messagesHandled} / {totalMessages}
-        </p>
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-600">Speed:</span>
+        <select 
+          value={feedSpeed}
+          onChange={(e) => changeFeedSpeed(Number(e.target.value))}
+          className="rounded border border-gray-300 px-2 py-1"
+        >
+          <option value={0.5}>Slow</option>
+          <option value={1}>Normal</option>
+          <option value={2}>Fast</option>
+        </select>
       </div>
     </div>
   );
 }
 
-export function FactCheckPanel({ factCheckResult, loading, factChecksRemaining, handleModeration, currentMessageId }) {
+export function FactCheckPanel({ factCheckResult, loading, factChecksRemaining, handleModeration, currentMessageId, largerArticles }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-6 shadow-md">
+    <div className="rounded-lg bg-gray-50 p-6 shadow-md h-[600px] flex flex-col">
       <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
         <h2 className="text-xl font-bold">Fact Check Results</h2>
         <div
@@ -65,50 +65,54 @@ export function FactCheckPanel({ factCheckResult, loading, factChecksRemaining, 
         </div>
       </div>
 
-      {!factCheckResult && !loading && (
-        <p className="text-gray-500 italic">
-          Click "Fact Check" on the message to see results.
-        </p>
-      )}
+      <div className="flex-grow overflow-y-auto">
+        {!factCheckResult && !loading && (
+          <p className="text-gray-500 italic">
+            Click "Fact Check" on a tweet to see results.
+          </p>
+        )}
 
-      {loading && (
-        <div className="py-3 text-center text-gray-600 italic">
-          Searching for fact checks...
-        </div>
-      )}
+        {loading && (
+          <div className="py-3 text-center text-gray-600 italic">
+            Searching for fact checks...
+          </div>
+        )}
 
-      {factCheckResult && factCheckResult.type === 'news' && (
-        <NewsArticles 
-          articles={factCheckResult.articles}
-          onModerate={handleModeration}
-          messageId={currentMessageId}
-        />
-      )}
+        {factCheckResult && factCheckResult.type === 'news' && (
+          <NewsArticles 
+            articles={factCheckResult.articles}
+            onModerate={handleModeration}
+            messageId={currentMessageId}
+            largerArticles={largerArticles}
+          />
+        )}
 
-      {factCheckResult && factCheckResult.found && factCheckResult.type === 'factCheck' && (
-        <FactResults
-          results={factCheckResult.allResults}
-          onModerate={handleModeration}
-          messageId={currentMessageId}
-        />
-      )}
+        {factCheckResult && factCheckResult.found && factCheckResult.type === 'factCheck' && (
+          <FactResults
+            results={factCheckResult.allResults}
+            onModerate={handleModeration}
+            messageId={currentMessageId}
+            largerArticles={largerArticles}
+          />
+        )}
 
-      {factCheckResult && !factCheckResult.found && (
-        <NoResults 
-          message={factCheckResult.message}
-          onModerate={handleModeration}
-          messageId={currentMessageId}
-        />
-      )}
+        {factCheckResult && !factCheckResult.found && (
+          <NoResults 
+            message={factCheckResult.message}
+            onModerate={handleModeration}
+            messageId={currentMessageId}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-function NewsArticles({ articles, onModerate, messageId }) {
+function NewsArticles({ articles, onModerate, messageId, largerArticles }) {
   return (
     <>
       <h3 className="font-bold text-lg mb-2">Related News Articles</h3>
-      <div className="mb-4 max-h-60 space-y-4 overflow-y-auto">
+      <div className={`mb-4 ${largerArticles ? 'max-h-[400px]' : 'max-h-60'} space-y-4 overflow-y-auto`}>
         {articles.map((article, index) => (
           <div key={index} className="rounded-md border border-gray-200 bg-white p-3">
             <p className="text-sm font-semibold">{article.title}</p>
@@ -139,10 +143,10 @@ function NewsArticles({ articles, onModerate, messageId }) {
   );
 }
 
-function FactResults({ results, onModerate, messageId }) {
+function FactResults({ results, onModerate, messageId, largerArticles }) {
   return (
     <>
-      <div className="mb-4 max-h-60 space-y-4 overflow-y-auto">
+      <div className={`mb-4 ${largerArticles ? 'max-h-[400px]' : 'max-h-60'} space-y-4 overflow-y-auto`}>
         {results.map((result, index) => (
           <div
             key={index}
@@ -184,30 +188,38 @@ function FactResults({ results, onModerate, messageId }) {
   );
 }
 
+// Missing component - NoResults
 function NoResults({ message, onModerate, messageId }) {
   return (
-    <div>
-      <p className="mb-4 text-gray-600">{message}</p>
-      <ActionButtons onModerate={onModerate} messageId={messageId}/>
-    </div>
+    <>
+      <div className="py-6 text-center">
+        <p className="mb-4 text-gray-600">{message || "No fact checks found for this claim."}</p>
+        <p className="text-sm text-gray-500">
+          You may need to use your own judgment for this tweet.
+        </p>
+      </div>
+      <ActionButtons onModerate={onModerate} messageId={messageId} />
+    </>
   );
 }
 
-function ActionButtons({ onModerate, messageId}) {
+// Missing component - ActionButtons
+function ActionButtons({ onModerate, messageId }) {
   return (
     <div className="mt-4 flex gap-3">
-      <button
-        onClick={() => onModerate(messageId, "approve")}
-        className="rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
-      >
-        Approve
-      </button>
       <button
         onClick={() => onModerate(messageId, "flag")}
         className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
       >
-        {"Flag"}
+        {"Intox"}
       </button>
     </div>
   );
 }
+
+export default {
+  LoadingState,
+  GameOver,
+  FactCheckPanel,
+  TimerDisplay
+};

@@ -8,11 +8,11 @@ function formatTweetContent(content) {
   return content.replace(urlRegex, '');
 }
 
-function MessageCard({ message, onModerate }) {
+function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable }) {
   const mediaFiles = message.mediaFiles || [];
   
   return (
-    <div className="rounded-lg border border-gray-300 bg-white p-4 shadow-sm">
+    <div className={`rounded-lg border border-gray-300 bg-white p-4 shadow-sm ${clickable ? 'cursor-pointer hover:bg-gray-50' : ''}`}>
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center">
           {message.profilePic && (
@@ -36,7 +36,7 @@ function MessageCard({ message, onModerate }) {
         dangerouslySetInnerHTML={{ __html: formatTweetContent(message.content) }}
       />
       
-      {/* Affiche si possible les imgs */}
+      {/* Display media files if available */}
       {mediaFiles.length > 0 && (
         <div className="mb-4 grid grid-cols-2 gap-2">
           {mediaFiles.map((mediaPath, index) => (
@@ -55,26 +55,40 @@ function MessageCard({ message, onModerate }) {
         <span>🔄 {message.shares}</span>
       </div>
       
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => onModerate(message.id, "approve")}
-          className="rounded bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
-        >
-          Approve
-        </button>
-        <button
-          onClick={() => onModerate(message.id, "flag")}
-          className="rounded bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
-        >
-          Intox
-        </button>
-        <button
-          onClick={() => onModerate(message.id, "factcheck")}
-          className="rounded bg-blue-600 px-3 py-1 text-white transition hover:bg-blue-700"
-        >
-          Fact Check
-        </button>
-      </div>
+      {/* Only show buttons if not explicitly hidden */}
+      {!hideButtons && (
+        <div className="flex flex-wrap gap-2">
+          {!hideApproveButton && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onModerate(message.id, "approve");
+              }}
+              className="rounded bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
+            >
+              Approve
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onModerate(message.id, "flag");
+            }}
+            className="rounded bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
+          >
+            Intox
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onModerate(message.id, "factcheck");
+            }}
+            className="rounded bg-blue-600 px-3 py-1 text-white transition hover:bg-blue-700"
+          >
+            Fact Check
+          </button>
+        </div>
+      )}
     </div>
   );
 }

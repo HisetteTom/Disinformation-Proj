@@ -1,7 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import ModeratorGame from "./components/ModeratorGame";
 
 function App() {
+  // Add a key to force complete component remount between games
+  const [gameKey, setGameKey] = useState(Date.now());
+
+  // Handler for game reset
+  const handleGameReset = () => {
+    setGameKey(Date.now());
+  };
+
   return (
     <div className="mx-auto max-w-4xl p-5 font-sans text-gray-800">
       <header className="mb-8 text-center">
@@ -10,7 +18,7 @@ function App() {
         </h1>
       </header>
       <main>
-        <ModeratorGame />
+        <ModeratorGame key={gameKey} onReset={handleGameReset} />
       </main>
     </div>
   );
