@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import MenuUpgrade from './MenuUpgrade';
+import Upgrade from '../data/listUpgrade';
 
 export function LoadingState() {
   return (
@@ -9,6 +11,12 @@ export function LoadingState() {
 }
 
 export function GameOver({ score, messagesHandled, onPlayAgain }) {
+  var [shop, setShop] = useState(false);
+  var [PlayerUpgrade, setPlayerUpgrade]= useState([]);
+  var [Money, setMoney] = useState(20);
+   
+  console.log(Array.isArray(PlayerUpgrade));
+  console.log(typeof(PlayerUpgrade));
   return (
     <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
       <h1 className="mb-4 text-2xl font-bold">Game Over!</h1>
@@ -20,6 +28,13 @@ export function GameOver({ score, messagesHandled, onPlayAgain }) {
       >
         Play Again
       </button>
+      <button
+        onClick={()=> setShop(true)}
+        className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
+      >
+        Upgrade Shop
+      </button>
+      {shop &&  <MenuUpgrade PlayerUpgrades= {PlayerUpgrade} SetPlayerUpgrade = {setPlayerUpgrade} Money={Money} SetMoney= {setMoney} Score={score} Diplay={()=> setShop(false)}/>}
     </div>
   );
 }
