@@ -8,8 +8,10 @@ function formatTweetContent(content) {
   return content.replace(urlRegex, '');
 }
 
-function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable }) {
+function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable, onClose }) {
   const mediaFiles = message.mediaFiles || [];
+  // Split the mediaFiles string if it's not already an array
+  const mediaFilesArray = Array.isArray(mediaFiles) ? mediaFiles : mediaFiles.split('|');
   
   return (
     <div className={`rounded-lg border border-gray-300 bg-white p-4 shadow-sm ${clickable ? 'cursor-pointer hover:bg-gray-50' : ''}`}>
@@ -17,9 +19,13 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
         <div className="flex items-center">
           {message.profilePic && (
             <img 
-              src={`http://localhost:3001/${message.profilePic}`} 
+              src={message.profilePic} // Use direct Azure URL
               alt={`${message.author}'s profile`}
               className="mr-2 h-8 w-8 rounded-full"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/default-avatar.png"; // Fallback image
+              }}
             />
           )}
           <span className="font-bold text-gray-800">@{message.author}</span>
@@ -37,14 +43,18 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
       />
       
       {/* Display media files if available */}
-      {mediaFiles.length > 0 && (
+      {mediaFilesArray.length > 0 && (
         <div className="mb-4 grid grid-cols-2 gap-2">
-          {mediaFiles.map((mediaPath, index) => (
+          {mediaFilesArray.map((mediaUrl, index) => (
             <img 
               key={index}
-              src={`http://localhost:3001/${mediaPath}`}
+              src={mediaUrl} // Use direct Azure URL
               alt={`Tweet media ${index + 1}`}
               className="w-full rounded-md"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/default-media.png"; // Fallback image
+              }}
             />
           ))}
         </div>
@@ -62,7 +72,8 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onModerate(message.id, "approve");
+                // Just close the modal when Approve is clicked
+                if (onClose) onClose();
               }}
               className="rounded bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
             >

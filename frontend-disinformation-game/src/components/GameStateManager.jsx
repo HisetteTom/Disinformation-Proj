@@ -3,7 +3,7 @@ import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
 // Game duration in milliseconds (3 minutes)
-export const GAME_DURATION = 3 * 60 * 1000;
+export const GAME_DURATION = 60 * 1000;
 // Number of initial tweets to show
 export const INITIAL_TWEETS_COUNT = 5;
 // Refresh interval for tweets (in milliseconds)

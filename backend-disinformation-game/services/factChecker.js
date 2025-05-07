@@ -12,28 +12,51 @@ require('dotenv').config();
  */
 function generateSearchQueries(keywords, minSize = 2, maxSize = 5) {
   const queries = [];
-  const maxQueriesCount = 5; // Nombre maximum de requêtes à générer
+  const maxQueriesCount = 5; // Maximum number of queries to generate
   
-  // Assure que minSize ne dépasse pas le nombre de mots-clés
+  // Ensure size limits don't exceed available keywords
   minSize = Math.min(minSize, keywords.length);
-  // Assure que maxSize ne dépasse pas le nombre de mots-clés
   maxSize = Math.min(maxSize, keywords.length);
   
-  // Génère une requête principale avec tous les mots reliés par AND
+  // Always start with the full query containing all keywords
   if (keywords.length > 0) {
     queries.push(keywords.join(' AND '));
   }
   
-  // Génère des combinaisons de taille différente
-  for (let size = maxSize; size >= minSize && queries.length < maxQueriesCount; size--) {
-    // Mélange les mots-clés pour avoir des combinaisons variées
-    const shuffled = [...keywords].sort(() => 0.5 - Math.random());
-    // Prend une sous-partie des mots-clés mélangés
-    const subset = shuffled.slice(0, size);
-    // Ajoute la requête formatée si elle n'existe pas déjà
+  // Sort keywords by likely importance/relevance
+  // Words like "covid", "vaccine", etc. are more important for fact-checking
+  const sortedKeywords = [...keywords].sort((a, b) => {
+    const priorityTerms = /covid|vaccine|death|virus|pandemic|million|billion|study|report/i;
+    const aIsPriority = priorityTerms.test(a);
+    const bIsPriority = priorityTerms.test(b);
+    
+    if (aIsPriority && !bIsPriority) return -1;
+    if (!aIsPriority && bIsPriority) return 1;
+    return 0;
+  });
+  
+  // Generate combinations with decreasing numbers of terms
+  // Always keeping the most important terms when possible
+  for (let size = maxSize - 1; size >= minSize && queries.length < maxQueriesCount; size--) {
+    // Take the most important keywords first rather than random selection
+    const subset = sortedKeywords.slice(0, size);
     const query = subset.join(' AND ');
+    
     if (!queries.includes(query)) {
       queries.push(query);
+    }
+    
+    // If we need more variety but still with same number of terms
+    if (queries.length < maxQueriesCount && size < keywords.length - 1) {
+      const alternateSubset = [
+        sortedKeywords[0], // Keep the most important keyword
+        ...sortedKeywords.slice(Math.max(1, keywords.length - size + 1))
+      ].slice(0, size);
+      
+      const alternateQuery = alternateSubset.join(' AND ');
+      if (!queries.includes(alternateQuery)) {
+        queries.push(alternateQuery);
+      }
     }
   }
   

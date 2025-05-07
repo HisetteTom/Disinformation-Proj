@@ -16,7 +16,7 @@ function TweetModal({
       onClick={onClose} // Add this onClick handler to close when clicking the backdrop
     >
       <div 
-        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white/95 p-6 shadow-xl border border-white/20"
+        className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-lg bg-white/95 p-6 shadow-xl border border-white/20"
         onClick={(e) => e.stopPropagation()} // Add this to prevent clicks inside modal from closing it
       >
         <div className="mb-4 flex items-center justify-between">
@@ -41,22 +41,22 @@ function TweetModal({
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="mb-4">
+          <div className="mb-4 md:col-span-3">
             <MessageCard
               message={message}
               onModerate={onModerate}
-              hideApproveButton={true}  // Only show Intox and Fact Check buttons
+              onClose={onClose} 
             />
           </div>
 
-          <div className="h-full">
+          <div className="h-full md:col-span-2">
             <FactCheckPanel
               factCheckResult={factCheckResult}
               loading={loading}
               factChecksRemaining={factChecksRemaining}
               handleModeration={onModerate}
               currentMessageId={message.id}
-              largerArticles={true}  // Pass prop to enable larger article view
+              largerArticles={true}  
             />
           </div>
         </div>

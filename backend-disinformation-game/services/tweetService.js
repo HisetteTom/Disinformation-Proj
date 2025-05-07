@@ -1,55 +1,66 @@
-const fs = require('fs');      
-const path = require('path'); 
 const csv = require('csv-parser');
+const { Readable } = require('stream');
+const { getBlobStream, getBlobUrl, containerNames } = require('./azureStorageService');
 
 /**
- * Récupère les tweets depuis le fichier CSV
+ * Récupère les tweets depuis le fichier CSV dans Azure Blob Storage
  * @returns {Promise<Array>} Une promesse qui résout avec un tableau de tweets
  */
-
-//CC Promise : https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises
-//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
 async function getTweets() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const tweets = []; // Tableau qui contiendra tous les tweets
     
-    // Création d'un stream de lecture pour le fichier CSV
-    fs.createReadStream(path.resolve(__dirname, '../tweets.csv'))
-      .pipe(csv()) // Analyse le CSV en objets JavaScript
-      .on('data', (data) => {
-        // Pour chaque ligne du CSV (un tweet)
-        const formattedData = {};
-        
-        // Normalise les clés pour éviter les problèmes d'espaces
-        Object.keys(data).forEach(key => {
-          const normalizedKey = key.trim();
-          formattedData[normalizedKey] = data[key];
+    try {
+      // Récupérer le stream du fichier CSV depuis Azure Blob Storage
+      const csvStream = await getBlobStream(containerNames.data, 'tweets.csv');
+      
+      csvStream
+        .pipe(csv()) // Analyse le CSV en objets JavaScript
+        .on('data', (data) => {
+          // Pour chaque ligne du CSV (un tweet)
+          const formattedData = {};
+          
+          // Normalise les clés pour éviter les problèmes d'espaces
+          Object.keys(data).forEach(key => {
+            const normalizedKey = key.trim();
+            formattedData[normalizedKey] = data[key];
+          });
+          
+          // Conversion des chemins d'images locaux en URLs Azure
+          if (formattedData.Profile_Pic) {
+            // Extraire juste le nom du fichier depuis le chemin Windows
+            const fileName = formattedData.Profile_Pic.split('\\').pop();
+            formattedData.Profile_Pic = getBlobUrl(containerNames.profiles, fileName);
+          }
+          
+          // Même traitement pour les fichiers média attachés au tweet
+          if (formattedData.Media_Files) {
+            const mediaFiles = formattedData.Media_Files.split('|');
+            const azureMediaUrls = mediaFiles.map(filePath => {
+              // Extraire juste le nom du fichier depuis le chemin Windows
+              const fileName = filePath.split('\\').pop();
+              return getBlobUrl(containerNames.images, fileName);
+            });
+            formattedData.Media_Files = azureMediaUrls.join('|');
+          }
+          
+          // Ajoute le tweet formaté au tableau
+          tweets.push(formattedData);
+        })
+        .on('end', () => {
+          // Une fois la lecture terminée
+          console.log(`${tweets.length} tweets chargés avec succès depuis Azure Blob Storage`);
+          resolve(tweets); // Résout la promesse avec les tweets
+        })
+        .on('error', (error) => {
+          // En cas d'erreur pendant la lecture
+          console.error('Erreur lors de la lecture du CSV depuis Azure:', error);
+          reject(error); // Rejette la promesse avec l'erreur
         });
-        
-        // Conversion des chemins d'images de style Windows (avec \) en style URL (avec /)
-        if (formattedData.Profile_Pic) {
-          formattedData.Profile_Pic = formattedData.Profile_Pic.replace(/\\/g, '/');
-          console.log('Chemin de la photo de profil:', formattedData.Profile_Pic);
-        }
-        
-        // Même traitement pour les fichiers média attachés au tweet
-        if (formattedData.Media_Files) {
-          formattedData.Media_Files = formattedData.Media_Files.replace(/\\/g, '/');
-        }
-        
-        // Ajoute le tweet formaté au tableau
-        tweets.push(formattedData);
-      })
-      .on('end', () => {
-        // Une fois la lecture terminée
-        console.log(`${tweets.length} tweets chargés avec succès`);
-        resolve(tweets); // Résout la promesse avec les tweets
-      })
-      .on('error', (error) => {
-        // En cas d'erreur pendant la lecture
-        console.error('Erreur lors de la lecture du CSV:', error);
-        reject(error); // Rejette la promesse avec l'erreur
-      });
+    } catch (error) {
+      console.error('Erreur lors de la récupération du stream:', error);
+      reject(error);
+    }
   });
 }
 
