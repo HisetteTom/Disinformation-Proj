@@ -10,7 +10,7 @@ export function LoadingState() {
   );
 }
 
-export function GameOver({ score, messagesHandled, onPlayAgain }) {
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }) {
   var [shop, setShop] = useState(false);
   var [PlayerUpgrade, setPlayerUpgrade]= useState([]);
   var [Money, setMoney] = useState(20);
@@ -21,7 +21,26 @@ export function GameOver({ score, messagesHandled, onPlayAgain }) {
     <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
       <h1 className="mb-4 text-2xl font-bold">Game Over!</h1>
       <h2 className="mb-2 text-xl">Your final score: {score}</h2>
-      <p className="mb-6 text-gray-600">You flagged {messagesHandled} tweets in 3 minutes!</p>
+      <p className="mb-6 text-gray-600">You flagged {messagesHandled} tweets!</p>
+      
+      <div className="mb-6 border-t border-b border-gray-200 py-4">
+        <h3 className="mb-2 font-bold">Score Breakdown:</h3>
+        <ul className="space-y-1 text-sm">
+          <li className="text-green-600">
+            Correct flags: +{scoreBreakdown.correctFlags * 10} points ({scoreBreakdown.correctFlags} tweets)
+          </li>
+          <li className="text-red-600">
+            Incorrect flags: -{scoreBreakdown.incorrectFlags * 5} points ({scoreBreakdown.incorrectFlags} tweets)
+          </li>
+          <li className="text-red-600">
+            Missed misinformation: -{scoreBreakdown.missedMisinformation * 5} points ({scoreBreakdown.missedMisinformation} tweets)
+          </li>
+          <li className="text-blue-600">
+            Speed bonus: +{scoreBreakdown.speedBonus} points
+          </li>
+        </ul>
+      </div>
+      
       <button
         onClick={onPlayAgain}
         className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
@@ -231,6 +250,7 @@ function ActionButtons({ onModerate, messageId }) {
     </div>
   );
 }
+
 
 export default {
   LoadingState,
