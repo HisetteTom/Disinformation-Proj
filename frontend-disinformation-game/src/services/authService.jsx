@@ -1,21 +1,21 @@
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
+  updateProfile,
+} from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDdZKOBebV786PXXb1YB8GlCIZArUJZRR8",
-  authDomain: "disinformation-game.firebaseapp.com",
-  projectId: "disinformation-game",
-  storageBucket: "disinformation-game.firebasestorage.app",
-  messagingSenderId: "896801586624",
-  appId: "1:896801586624:web:46072201d3bb75b6001c25",
-  measurementId: "G-F3HLS9KQSL"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -26,43 +26,50 @@ const auth = getAuth(app);
 export const register = async (email, password, username) => {
   try {
     // First create the user with Firebase Authentication
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
+
     // Set display name for the user
     await updateProfile(userCredential.user, {
-      displayName: username
+      displayName: username,
     });
-    
+
     // Get token for backend authentication
     const token = await userCredential.user.getIdToken();
-    
+
     // Call backend to store additional user info
-    const response = await fetch('http://localhost:3001/api/users/register', {
-      method: 'POST',
+    const response = await fetch("http://localhost:3001/api/users/register", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         username,
         email,
-        password // The backend will ignore this since Firebase already handles auth
-      })
+        password, // The backend will ignore this since Firebase already handles auth
+      }),
     });
-    
+
     if (!response.ok) {
       // If the backend registration fails, delete the Firebase user
       try {
         await userCredential.user.delete();
       } catch (deleteError) {
-        console.error('Error cleaning up user after failed registration:', deleteError);
+        console.error(
+          "Error cleaning up user after failed registration:",
+          deleteError,
+        );
       }
-      throw new Error('Registration failed on server');
+      throw new Error("Registration failed on server");
     }
-    
+
     return userCredential.user;
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     throw error;
   }
 };
@@ -70,10 +77,14 @@ export const register = async (email, password, username) => {
 // Login user
 export const login = async (email, password) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
     return userCredential.user;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     throw error;
   }
 };
@@ -83,7 +94,7 @@ export const logout = async () => {
   try {
     await signOut(auth);
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     throw error;
   }
 };
@@ -108,61 +119,63 @@ export const onAuthChange = (callback) => {
 };
 
 export const updateUserStats = async (stats) => {
-    try {
-      const token = await getAuthToken();
-      if (!token) {
-        throw new Error('User not authenticated');
-      }
-      
-      const response = await fetch('http://localhost:3001/api/users/stats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          stats: stats  // Wrap stats in an object with "stats" property
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update stats');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating stats:', error);
-      throw error;
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("User not authenticated");
     }
-  };
 
+    const response = await fetch("http://localhost:3001/api/users/stats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        stats: stats, // Wrap stats in an object with "stats" property
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update stats");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating stats:", error);
+    throw error;
+  }
+};
 
 export const updateUserUpgrades = async (money, upgrades) => {
-    try {
-      const token = await getAuthToken();
-      if (!token) {
-        throw new Error('User not authenticated');
-      }
-      
-      const response = await fetch('http://localhost:3001/api/protected/upgrades', {
-        method: 'POST',
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("User not authenticated");
+    }
+
+    const response = await fetch(
+      "http://localhost:3001/api/protected/upgrades",
+      {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           money,
-          upgrades
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update upgrades');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating upgrades:', error);
-      throw error;
+          upgrades,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update upgrades");
     }
-  };
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating upgrades:", error);
+    throw error;
+  }
+};
