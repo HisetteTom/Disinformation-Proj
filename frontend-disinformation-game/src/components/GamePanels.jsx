@@ -10,13 +10,13 @@ export function LoadingState() {
   );
 }
 
-export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }) {
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user }) {
   var [shop, setShop] = useState(false);
   var [PlayerUpgrade, setPlayerUpgrade]= useState([]);
   var [Money, setMoney] = useState(20);
    
-  console.log(Array.isArray(PlayerUpgrade));
-  console.log(typeof(PlayerUpgrade));
+  // console.log(Array.isArray(PlayerUpgrade));
+  // console.log(typeof(PlayerUpgrade));
   return (
     <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
       <h1 className="mb-4 text-2xl font-bold">Game Over!</h1>
@@ -38,6 +38,9 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }
           <li className="text-blue-600">
             Speed bonus: +{scoreBreakdown.speedBonus} points
           </li>
+          <li className="text-green-600 font-medium">
+            Time bonus: +{timeScore} points
+          </li>
         </ul>
       </div>
       
@@ -53,7 +56,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }
       >
         Upgrade Shop
       </button>
-      {shop &&  <MenuUpgrade PlayerUpgrades= {PlayerUpgrade} SetPlayerUpgrade = {setPlayerUpgrade} Money={Money} SetMoney= {setMoney} Score={score} Diplay={()=> setShop(false)}/>}
+      {shop && <MenuUpgrade user={user} Score={score} Diplay={() => setShop(false)}/>}
     </div>
   );
 }
