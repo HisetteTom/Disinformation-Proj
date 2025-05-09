@@ -38,7 +38,7 @@ const Upgrade = [
         "-50% points lost from mistakes"
       ],
       price: [200, 450],
-      effect: (level) => ({ mistakePenaltyReduction: level * 0.25 })
+      effect: (level) => ({ mistakePenaltyReduction: 1 - level * 0.25 })
     },
     {
       id: "time_bonus",

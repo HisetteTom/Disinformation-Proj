@@ -10,6 +10,7 @@ import {
   evaluateTweetContent,
 } from "./TweetFeedManager";
 import { updateUserStats } from "../services/authService";
+import Upgrade from "../data/listUpgrade";
 
 function ModeratorGame({ onReset, user, onLogin }) {
   const [scoreBreakdown, setScoreBreakdown] = useState({
@@ -57,6 +58,36 @@ function ModeratorGame({ onReset, user, onLogin }) {
     timeScoreTimerRef,
     messagesIndexRef,
   } = gameState;
+
+
+  //define effect of the upgrade
+  var upgradeEffect ={};
+  if(user){
+    user.upgrades = { fact_checker: 1, speed_bonus: 1, mistake_shield: 1, time_bonus : 1 };
+    
+    for (let presentupgrade in user.upgrades) {
+      var correspondance = Upgrade.find((element => element.id === presentupgrade));
+      if(correspondance != undefined){
+          for(var unique in correspondance.effect(user.upgrades[presentupgrade])){
+            upgradeEffect[unique] = correspondance.effect(user.upgrades[presentupgrade])[unique];
+          }
+        }   
+      
+    }
+    
+  }
+
+  console.log(upgradeEffect);
+//     console.log(typeof(upgradeEffect));
+//     console.log(upgradeEffect instanceof Map);
+//     console.log(upgradeEffect instanceof Set);
+//     console.log(upgradeEffect instanceof Object);
+// console.log(Object.keys(upgradeEffect))
+
+//   erreur
+  // if(Object.keys(upgradeEffect).includes("factChecksBonus")){
+  //   setFactChecksRemaining(factChecksRemaining + upgradeEffect["factChecksBonus"]);
+  // }
 
   // Track processed tweets to calculate end-game penalties
   const [processedTweets, setProcessedTweets] = useState([]);
@@ -123,7 +154,12 @@ function ModeratorGame({ onReset, user, onLogin }) {
         return isMisinformation;
       }).length;
 
-      const penaltyPoints = missedMisinformationCount * 5;
+      if(Object.keys(upgradeEffect).includes("mistakePenaltyReduction")){
+        const penaltyPoints = missedMisinformationCount * 5 *  upgradeEffect["mistakePenaltyReduction"];
+      }else{
+        const penaltyPoints = missedMisinformationCount * 5;
+      }
+        
 
       if (penaltyPoints > 0) {
         setScore((currentScore) => Math.max(0, currentScore - penaltyPoints));
@@ -176,7 +212,13 @@ function ModeratorGame({ onReset, user, onLogin }) {
   
       if (isMisinformation) {
         // Correct flagging - update baseScore instead of score
+      if(Object.keys(upgradeEffect).includes("speedMultiplier")){
+          const pointsEarned = Math.round(10 * speedMultiplier * upgradeEffect["speedMultiplier"]);
+      }
+      else{
         const pointsEarned = Math.round(10 * speedMultiplier);
+
+      }
         setBaseScore(baseScore + pointsEarned);
   
         // Update score breakdown

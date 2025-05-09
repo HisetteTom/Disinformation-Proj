@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import MenuUpgrade from './MenuUpgrade';
-import { defaultUpgrade } from "../data/listUpgrade";
-import Upgrade from '../data/listUpgrade';
+
 
 export function LoadingState() {
   return (
@@ -12,8 +11,7 @@ export function LoadingState() {
 }
 
 export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user }) {
-  var [shop, setShop] = useState(false);  var [PlayerUpgrade, setPlayerUpgrade]= useState(defaultUpgrade);
-  var [Money, setMoney] = useState(2000);
+  var [shop, setShop] = useState(false);  
 
   return (
     <div className="mx-auto max-w-2xl rounded-lg bg-gray-50 p-6 shadow-md">
