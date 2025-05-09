@@ -10,12 +10,12 @@ frontend-disinformation-game/node_modules/
 frontend-disinformation-game/dist/
 frontend-disinformation-game/dist-ssr/
 frontend-disinformation-game/*.local
+frontend-disinformation-game/.env
 
 # Backend ignores
 backend-disinformation-game/node_modules/
 backend-disinformation-game/.env
-
-# Large media folders that are now in Azure
 backend-disinformation-game/downloaded_images/
 backend-disinformation-game/profile_pics/
 backend-disinformation-game/tweets.csv
+backend-disinformation-game/GCP_KEYS.json

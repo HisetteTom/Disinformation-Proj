@@ -1,9 +1,10 @@
 const csv = require('csv-parser');
-const { Readable } = require('stream');
-const { getBlobStream, getBlobUrl, containerNames } = require('./azureStorageService');
+const fs = require('fs');
+const path = require('path');
+const { getFileStream, getFileUrl } = require('./gcpStorageService');
 
 /**
- * Récupère les tweets depuis le fichier CSV dans Azure Blob Storage
+ * Récupère les tweets depuis le fichier CSV dans Google Cloud Storage
  * @returns {Promise<Array>} Une promesse qui résout avec un tableau de tweets
  */
 async function getTweets() {
@@ -11,8 +12,26 @@ async function getTweets() {
     const tweets = []; // Tableau qui contiendra tous les tweets
     
     try {
-      // Récupérer le stream du fichier CSV depuis Azure Blob Storage
-      const csvStream = await getBlobStream(containerNames.data, 'tweets.csv');
+      console.log('Fetching tweets.csv from GCP...');
+      
+      let csvStream;
+      try {
+        // Try to get the file from GCP
+        csvStream = await getFileStream('data', 'tweets.csv');
+      } catch (gcpError) {
+        console.error('Error accessing tweets.csv in GCP:', gcpError);
+        
+        // Fallback to local file
+        const localPath = path.join(__dirname, '..', 'temp', 'tweets.csv');
+        console.log(`Trying local file: ${localPath}`);
+        
+        if (fs.existsSync(localPath)) {
+          console.log('Using local tweets.csv as fallback');
+          csvStream = fs.createReadStream(localPath);
+        } else {
+          throw new Error('Could not access tweets.csv in GCP or locally');
+        }
+      }
       
       csvStream
         .pipe(csv()) // Analyse le CSV en objets JavaScript
@@ -26,22 +45,53 @@ async function getTweets() {
             formattedData[normalizedKey] = data[key];
           });
           
-          // Conversion des chemins d'images locaux en URLs Azure
+          // Handle profile pic paths
           if (formattedData.Profile_Pic) {
-            // Extraire juste le nom du fichier depuis le chemin Windows
-            const fileName = formattedData.Profile_Pic.split('\\').pop();
-            formattedData.Profile_Pic = getBlobUrl(containerNames.profiles, fileName);
+            try {
+              // Extract just the filename, handling different path formats
+              let fileName;
+              if (formattedData.Profile_Pic.includes('\\')) {
+                // Windows path format from CSV
+                fileName = formattedData.Profile_Pic.split('\\').pop();
+              } else if (formattedData.Profile_Pic.includes('/')) {
+                // Unix path format
+                fileName = formattedData.Profile_Pic.split('/').pop();
+              } else {
+                // Already just a filename
+                fileName = formattedData.Profile_Pic;
+              }
+              
+              formattedData.Profile_Pic = getFileUrl('profiles', fileName);
+              //console.log(`Processed profile pic: ${fileName}`);
+            } catch (error) {
+              console.error('Error processing profile pic:', error);
+              formattedData.Profile_Pic = null;
+            }
           }
           
-          // Même traitement pour les fichiers média attachés au tweet
+          // Handle media files similarly
           if (formattedData.Media_Files) {
-            const mediaFiles = formattedData.Media_Files.split('|');
-            const azureMediaUrls = mediaFiles.map(filePath => {
-              // Extraire juste le nom du fichier depuis le chemin Windows
-              const fileName = filePath.split('\\').pop();
-              return getBlobUrl(containerNames.images, fileName);
-            });
-            formattedData.Media_Files = azureMediaUrls.join('|');
+            try {
+              const mediaFiles = formattedData.Media_Files.split('|');
+              const gcpMediaUrls = mediaFiles.map(filePath => {
+                let fileName;
+                if (filePath.includes('\\')) {
+                  fileName = filePath.split('\\').pop();
+                } else if (filePath.includes('/')) {
+                  fileName = filePath.split('/').pop();
+                } else {
+                  fileName = filePath;
+                }
+                
+                return getFileUrl('images', fileName);
+              });
+              
+              formattedData.Media_Files = gcpMediaUrls.join('|');
+              //console.log(`Processed ${gcpMediaUrls.length} media files`);
+            } catch (error) {
+              console.error('Error processing media files:', error);
+              formattedData.Media_Files = '';
+            }
           }
           
           // Ajoute le tweet formaté au tableau
@@ -49,16 +99,16 @@ async function getTweets() {
         })
         .on('end', () => {
           // Une fois la lecture terminée
-          console.log(`${tweets.length} tweets chargés avec succès depuis Azure Blob Storage`);
+          //console.log(`${tweets.length} tweets loaded successfully`);
           resolve(tweets); // Résout la promesse avec les tweets
         })
         .on('error', (error) => {
           // En cas d'erreur pendant la lecture
-          console.error('Erreur lors de la lecture du CSV depuis Azure:', error);
+          console.error('Error reading CSV:', error);
           reject(error); // Rejette la promesse avec l'erreur
         });
     } catch (error) {
-      console.error('Erreur lors de la récupération du stream:', error);
+      console.error('Error getting tweets:', error);
       reject(error);
     }
   });

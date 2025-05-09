@@ -10,7 +10,8 @@ export function startGame(
   setFactChecksRemaining, 
   messagesIndexRef, 
   gameTimerRef, 
-  refreshTimerRef, 
+  refreshTimerRef,
+  timeScoreTimerRef,
   GAME_DURATION, 
   startTweetRefresh,
   setGameOver
@@ -30,8 +31,10 @@ export function startGame(
   gameTimerRef.current = setInterval(() => {
     setTimeRemaining((prev) => {
       if (prev <= 1000) {
+        // When time is up, clear all timers
         clearInterval(gameTimerRef.current);
         clearInterval(refreshTimerRef.current);
+        clearInterval(timeScoreTimerRef.current);
         setGameOver(true);
         return 0;
       }

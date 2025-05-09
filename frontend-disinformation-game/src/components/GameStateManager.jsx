@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-// Game duration in milliseconds (3 minutes)
 export const GAME_DURATION = 60 * 1000;
+// Score awarded every 5 seconds
+export const TIME_SCORE_INTERVAL = 5000;
+export const TIME_SCORE_AMOUNT = 5;
 // Number of initial tweets to show
 export const INITIAL_TWEETS_COUNT = 5;
 // Refresh interval for tweets (in milliseconds)
@@ -15,6 +17,8 @@ export function useGameState(onReset) {
   const [currentMessage, setCurrentMessage] = useState(null);
   const [factCheckResults, setFactCheckResults] = useState({});
   const [score, setScore] = useState(0);
+  const [baseScore, setBaseScore] = useState(0); // Score from flagging tweets
+  const [timeScore, setTimeScore] = useState(0); // Score from time passing
   const [messagesHandled, setMessagesHandled] = useState(0);
   const [factChecksRemaining, setFactChecksRemaining] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +32,7 @@ export function useGameState(onReset) {
   // Refs for timers and message tracking
   const gameTimerRef = useRef(null);
   const refreshTimerRef = useRef(null);
+  const timeScoreTimerRef = useRef(null);
   const messagesIndexRef = useRef(0);
   const sessionIdRef = useRef(Date.now());
 
@@ -36,6 +41,7 @@ export function useGameState(onReset) {
     return () => {
       if (gameTimerRef.current) clearInterval(gameTimerRef.current);
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+      if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
       
       resetGameState();
     };
@@ -46,12 +52,45 @@ export function useGameState(onReset) {
     loadTweets();
   }, []);
 
+  // Award points periodically during gameplay
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+      // Start periodic time-based scoring
+      timeScoreTimerRef.current = setInterval(() => {
+        // Award points every 5 seconds
+        setTimeScore(prev => prev + TIME_SCORE_AMOUNT);
+        // Update total score
+        setScore(currentScore => currentScore + TIME_SCORE_AMOUNT);
+      }, TIME_SCORE_INTERVAL);
+      
+      return () => {
+        if (timeScoreTimerRef.current) {
+          clearInterval(timeScoreTimerRef.current);
+        }
+      };
+    }
+  }, [gameStarted, gameOver]);
+
+  // Update total score when base score changes
+  useEffect(() => {
+    // This ensures the total score is always baseScore + timeScore
+    setScore(baseScore + timeScore);
+  }, [baseScore]);
+
   const resetGameState = () => {
+    // Clear all timers
+    if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+    if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
+    
+    // Reset state
     setGameMessages([]);
     setMessageFeed([]);
     setCurrentMessage(null);
     setFactCheckResults({});
     setScore(0);
+    setBaseScore(0);
+    setTimeScore(0);
     setMessagesHandled(0);
     setFactChecksRemaining(5);
     setGameStarted(false);
@@ -93,6 +132,9 @@ export function useGameState(onReset) {
     setFeedSpeed(newSpeed);
   };
 
+
+
+  
   return {
     gameMessages,
     messageFeed,
@@ -103,6 +145,10 @@ export function useGameState(onReset) {
     setFactCheckResults,
     score,
     setScore,
+    baseScore,
+    setBaseScore,
+    timeScore,
+    setTimeScore,
     messagesHandled,
     setMessagesHandled,
     factChecksRemaining, 
@@ -122,6 +168,7 @@ export function useGameState(onReset) {
     setLoading,
     gameTimerRef,
     refreshTimerRef,
+    timeScoreTimerRef,
     messagesIndexRef,
     sessionIdRef,
     resetGameState

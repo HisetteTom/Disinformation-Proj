@@ -11,9 +11,8 @@ export function LoadingState() {
   );
 }
 
-export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }) {
-  var [shop, setShop] = useState(false);
-  var [PlayerUpgrade, setPlayerUpgrade]= useState(defaultUpgrade);
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user }) {
+  var [shop, setShop] = useState(false);  var [PlayerUpgrade, setPlayerUpgrade]= useState(defaultUpgrade);
   var [Money, setMoney] = useState(2000);
 
   return (
@@ -37,6 +36,9 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }
           <li className="text-blue-600">
             Speed bonus: +{scoreBreakdown.speedBonus} points
           </li>
+          <li className="text-green-600 font-medium">
+            Time bonus: +{timeScore} points
+          </li>
         </ul>
       </div>
       
@@ -52,7 +54,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown }
       >
         Upgrade Shop
       </button>
-      {shop &&  <MenuUpgrade PlayerUpgrades= {PlayerUpgrade} SetPlayerUpgrade = {setPlayerUpgrade} Money={Money} SetMoney= {setMoney} Score={score} Diplay={()=> setShop(false)}/>}
+      {shop && <MenuUpgrade user={user} Score={score} Diplay={() => setShop(false)}/>}
     </div>
   );
 }
