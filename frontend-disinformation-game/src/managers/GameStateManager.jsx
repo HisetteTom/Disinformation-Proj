@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 60 * 1000;
+export const GAME_DURATION = 10 * 1000;
 // Score awarded every 5 seconds
 export const TIME_SCORE_INTERVAL = 5000;
 export const TIME_SCORE_AMOUNT = 5;
@@ -42,7 +42,7 @@ export function useGameState(onReset) {
       if (gameTimerRef.current) clearInterval(gameTimerRef.current);
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
       if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
-      
+
       resetGameState();
     };
   }, []);
@@ -58,11 +58,11 @@ export function useGameState(onReset) {
       // Start periodic time-based scoring
       timeScoreTimerRef.current = setInterval(() => {
         // Award points every 5 seconds
-        setTimeScore(prev => prev + TIME_SCORE_AMOUNT);
+        setTimeScore((prev) => prev + TIME_SCORE_AMOUNT);
         // Update total score
-        setScore(currentScore => currentScore + TIME_SCORE_AMOUNT);
+        setScore((currentScore) => currentScore + TIME_SCORE_AMOUNT);
       }, TIME_SCORE_INTERVAL);
-      
+
       return () => {
         if (timeScoreTimerRef.current) {
           clearInterval(timeScoreTimerRef.current);
@@ -82,7 +82,7 @@ export function useGameState(onReset) {
     if (gameTimerRef.current) clearInterval(gameTimerRef.current);
     if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
-    
+
     // Reset state
     setGameMessages([]);
     setMessageFeed([]);
@@ -103,7 +103,7 @@ export function useGameState(onReset) {
     try {
       setIsLoading(true);
       const tweetsData = await fetchTweets();
-      
+
       const formattedTweets = tweetsData.map((tweet, index) => ({
         id: index + 1,
         author: tweet.Username,
@@ -112,12 +112,12 @@ export function useGameState(onReset) {
         likes: parseInt(tweet.Likes) || 0,
         shares: parseInt(tweet.Retweets) || 0,
         profilePic: tweet.Profile_Pic,
-        mediaFiles: tweet.Media_Files ? tweet.Media_Files.split('|') : [],
-        isNew: true
+        mediaFiles: tweet.Media_Files ? tweet.Media_Files.split("|") : [],
+        isNew: true,
       }));
-      
+
       // Use session ID to ensure different randomization each time
-      const seed = sessionIdRef.current % 1000 / 1000;
+      const seed = (sessionIdRef.current % 1000) / 1000;
       const shuffled = [...formattedTweets].sort(() => 0.5 - Math.random() + seed * 0.2 - 0.1);
       setGameMessages(shuffled);
     } catch (error) {
@@ -132,9 +132,6 @@ export function useGameState(onReset) {
     setFeedSpeed(newSpeed);
   };
 
-
-
-  
   return {
     gameMessages,
     messageFeed,
@@ -151,7 +148,7 @@ export function useGameState(onReset) {
     setTimeScore,
     messagesHandled,
     setMessagesHandled,
-    factChecksRemaining, 
+    factChecksRemaining,
     setFactChecksRemaining,
     isLoading,
     gameStarted,
@@ -162,7 +159,7 @@ export function useGameState(onReset) {
     setTimeRemaining,
     feedSpeed,
     changeFeedSpeed,
-    isModalOpen, 
+    isModalOpen,
     setIsModalOpen,
     loading,
     setLoading,
@@ -171,6 +168,6 @@ export function useGameState(onReset) {
     timeScoreTimerRef,
     messagesIndexRef,
     sessionIdRef,
-    resetGameState
+    resetGameState,
   };
 }
