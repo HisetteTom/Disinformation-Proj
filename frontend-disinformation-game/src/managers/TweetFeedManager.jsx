@@ -1,24 +1,25 @@
-import { REFRESH_INTERVAL, INITIAL_TWEETS_COUNT } from './GameStateManager';
+import { REFRESH_INTERVAL, INITIAL_TWEETS_COUNT } from "./GameStateManager";
 
 export function startGame(
-  setGameStarted, 
-  setTimeRemaining, 
-  setMessageFeed, 
-  setFactCheckResults, 
-  setScore, 
-  setMessagesHandled, 
-  setFactChecksRemaining, 
-  messagesIndexRef, 
-  gameTimerRef, 
+  setGameStarted,
+  setTimeRemaining,
+  setMessageFeed,
+  setFactCheckResults,
+  setScore,
+  setMessagesHandled,
+  setFactChecksRemaining,
+  messagesIndexRef,
+  gameTimerRef,
   refreshTimerRef,
   timeScoreTimerRef,
-  GAME_DURATION, 
+  GAME_DURATION,
   startTweetRefresh,
-  setGameOver
+  setGameOver,
+  startTimeScoring, // Add this new parameter
 ) {
   setGameStarted(true);
   setTimeRemaining(GAME_DURATION);
-  
+
   // Reset state to ensure clean game start
   setMessageFeed([]);
   setFactCheckResults({});
@@ -26,7 +27,7 @@ export function startGame(
   setMessagesHandled(0);
   setFactChecksRemaining(5);
   messagesIndexRef.current = 0;
-  
+
   // Start the game timer
   gameTimerRef.current = setInterval(() => {
     setTimeRemaining((prev) => {
@@ -42,53 +43,44 @@ export function startGame(
     });
   }, 1000);
 
+  // Start time scoring - now called directly when the game starts
+  startTimeScoring();
+
   // Start periodic refresh of tweets
   setTimeout(() => {
     startTweetRefresh();
   }, 1000);
-};
-
+}
 // Periodically refresh the tweet feed
-export function createTweetRefresher(
-  refreshTimerRef,
-  feedSpeed,
-  messagesIndexRef,
-  gameMessages,
-  gameOver,
-  setMessageFeed
-) {
+export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRef, gameMessages, gameOver, setMessageFeed) {
   return () => {
     if (refreshTimerRef.current) {
       clearInterval(refreshTimerRef.current);
     }
 
     const interval = REFRESH_INTERVAL / feedSpeed;
-    
+
     let isAddingTweet = false;
-    
+
     refreshTimerRef.current = setInterval(() => {
       if (!isAddingTweet && messagesIndexRef.current < gameMessages.length && !gameOver) {
         isAddingTweet = true;
-        
+
         const nextTweet = {
           ...gameMessages[messagesIndexRef.current],
-          isNew: true
+          isNew: true,
         };
-        
-        setMessageFeed(prev => {
+
+        setMessageFeed((prev) => {
           const combined = [nextTweet, ...prev];
           const maxKeep = INITIAL_TWEETS_COUNT * 2;
           return combined.length > maxKeep ? combined.slice(0, maxKeep) : combined;
         });
-        
+
         messagesIndexRef.current += 1;
-        
+
         setTimeout(() => {
-          setMessageFeed(prevFeed => 
-            prevFeed.map((msg, index) => 
-              index === 0 ? { ...msg, isNew: false } : msg
-            )
-          );
+          setMessageFeed((prevFeed) => prevFeed.map((msg, index) => (index === 0 ? { ...msg, isNew: false } : msg)));
           isAddingTweet = false;
         }, 600);
       }

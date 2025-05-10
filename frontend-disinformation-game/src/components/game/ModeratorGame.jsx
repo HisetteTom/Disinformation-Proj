@@ -8,11 +8,9 @@ import GamePlayArea from "./GamePlayArea";
 import { useUpgradeEffects } from "../../hooks/useUpgradeEffects";
 import { useGameActions } from "../../hooks/useGameActions";
 import { updateUserUpgrades } from "../../services/authService";
+import { TIME_SCORE_INTERVAL, TIME_SCORE_AMOUNT } from "../../managers/GameStateManager";
 
 function ModeratorGame({ onReset, user, onLogin }) {
-  const gameState = useGameState(onReset);
-  const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
-
   // Track processed tweets to calculate end-game penalties
   const [processedTweets, setProcessedTweets] = useState([]);
   // Track if money has been saved to prevent duplicate updates
@@ -20,6 +18,18 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
   // Get upgrade effects based on user
   const upgradeEffects = useUpgradeEffects(user);
+  const gameState = useGameState(onReset, upgradeEffects);
+  const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
+
+  // Log upgrade values for debugging
+  useEffect(() => {
+    console.log("Current Upgrades:", {
+      "Fact Check Bonus": upgradeEffects.getFactChecksBonus(),
+      "Speed Multiplier": upgradeEffects.getSpeedMultiplier(),
+      "Mistake Penalty Reduction": upgradeEffects.getMistakePenaltyReduction(),
+      "Time Score Bonus": upgradeEffects.getTimeScoreBonus(),
+    });
+  }, [upgradeEffects]);
 
   // Get game actions and scoring functionality
   const { scoreBreakdown, setScoreBreakdown, handleTweetClick, handleCloseModal, handleModeration } = useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets);
@@ -42,13 +52,11 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
   // Update user's money in database when game ends
   useEffect(() => {
-    // Only run this effect when the game is over, we have a score, and money hasn't been saved yet
     if (gameOver && score > 0 && user && !moneySaved) {
       const updateMoney = async () => {
         try {
           console.log(`Updating money in database: +${score}`);
 
-          // Create a custom endpoint to fetch user money or modify your backend to include it
           const response = await fetch(`http://localhost:3001/api/protected/money`, {
             headers: {
               Authorization: `Bearer ${user.stsTokenManager.accessToken}`,
@@ -110,6 +118,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
     // Apply upgrade effects before starting game
     const initialFactChecks = 5 + upgradeEffects.getFactChecksBonus();
+    console.log(`Starting game with ${initialFactChecks} fact checks (base: 5, bonus: ${upgradeEffects.getFactChecksBonus()})`);
 
     startGame(
       setGameStarted,
@@ -126,6 +135,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
       GAME_DURATION,
       startTweetRefresh,
       setGameOver,
+      gameState.startTimeScoring,
     );
   };
 

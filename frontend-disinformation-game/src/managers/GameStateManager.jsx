@@ -2,16 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 10 * 1000;
-// Score awarded every 5 seconds
-export const TIME_SCORE_INTERVAL = 5000;
+export const GAME_DURATION = 180 * 1000; // 3 minutes
+// Score awarded every 2 seconds
+export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;
 // Number of initial tweets to show
 export const INITIAL_TWEETS_COUNT = 5;
 // Refresh interval for tweets (in milliseconds)
 export const REFRESH_INTERVAL = 8000;
 
-export function useGameState(onReset) {
+export function useGameState(onReset, upgradeEffects = null) {
+  // All state declarations remain the same
   const [gameMessages, setGameMessages] = useState([]);
   const [messageFeed, setMessageFeed] = useState([]);
   const [currentMessage, setCurrentMessage] = useState(null);
@@ -52,36 +53,46 @@ export function useGameState(onReset) {
     loadTweets();
   }, []);
 
-  // Award points periodically during gameplay
+  // SIMPLIFIED: Update total score when any component score changes
   useEffect(() => {
-    if (gameStarted && !gameOver) {
-      // Start periodic time-based scoring
-      timeScoreTimerRef.current = setInterval(() => {
-        // Award points every 5 seconds
-        setTimeScore((prev) => prev + TIME_SCORE_AMOUNT);
-        // Update total score
-        setScore((currentScore) => currentScore + TIME_SCORE_AMOUNT);
-      }, TIME_SCORE_INTERVAL);
+    const newTotalScore = baseScore + timeScore;
+    setScore(newTotalScore);
+    console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
+  }, [baseScore, timeScore]);
 
-      return () => {
-        if (timeScoreTimerRef.current) {
-          clearInterval(timeScoreTimerRef.current);
-        }
-      };
+  const startTimeScoring = () => {
+    // Clear any existing timer first
+    if (timeScoreTimerRef.current) {
+      clearInterval(timeScoreTimerRef.current);
+      timeScoreTimerRef.current = null;
     }
-  }, [gameStarted, gameOver]);
 
-  // Update total score when base score changes
-  useEffect(() => {
-    // This ensures the total score is always baseScore + timeScore
-    setScore(baseScore + timeScore);
-  }, [baseScore]);
+    console.log("Setting up time scoring once at game start");
+
+    // Start a simple timer that adds 5 points every 2 seconds
+    timeScoreTimerRef.current = setInterval(() => {
+      setTimeScore((prev) => {
+        const newScore = prev + TIME_SCORE_AMOUNT;
+        console.log(`Time score +${TIME_SCORE_AMOUNT}: ${newScore}`);
+        return newScore;
+      });
+    }, TIME_SCORE_INTERVAL);
+  };
 
   const resetGameState = () => {
     // Clear all timers
-    if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-    if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
+    if (gameTimerRef.current) {
+      clearInterval(gameTimerRef.current);
+      gameTimerRef.current = null;
+    }
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (timeScoreTimerRef.current) {
+      clearInterval(timeScoreTimerRef.current);
+      timeScoreTimerRef.current = null;
+    }
 
     // Reset state
     setGameMessages([]);
@@ -169,5 +180,6 @@ export function useGameState(onReset) {
     messagesIndexRef,
     sessionIdRef,
     resetGameState,
+    startTimeScoring,
   };
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { evaluateTweetContent } from "../managers/TweetFeedManager";
 import { updateUserStats } from "../services/authService";
+import { TIME_SCORE_INTERVAL, TIME_SCORE_AMOUNT } from "../managers/GameStateManager";
+import { checkFact } from "../services/factCheckApi"; // Add this import
 
 export function useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets) {
   const [scoreBreakdown, setScoreBreakdown] = useState({
@@ -10,7 +12,7 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
     speedBonus: 0,
   });
 
-  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score } = gameState;
+  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score, gameStarted, timeScoreTimerRef, setTimeScore } = gameState;
 
   // Calculate speed multiplier for scoring
   const getSpeedMultiplier = (speed) => {
@@ -35,7 +37,39 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
   // Main moderation action handler
   const handleModeration = async (messageId, action) => {
     if (action === "factcheck") {
-      // Fact check logic would go here
+      // Get the selected message
+      const message = messageFeed.find((msg) => msg.id === messageId);
+      if (!message) return;
+
+      // Check if we have fact checks remaining
+      if (gameState.factChecksRemaining <= 0) {
+        console.log("No fact checks remaining");
+        return;
+      }
+
+      try {
+        // Set loading state
+        gameState.setLoading(true);
+
+        // Call the fact check API
+        console.log(`Performing fact check on: "${message.content}"`);
+        const factCheckResult = await checkFact(message.content);
+
+        // Store the result in state
+        gameState.setFactCheckResults((prev) => ({
+          ...prev,
+          [messageId]: factCheckResult,
+        }));
+
+        // Decrement available fact checks
+        gameState.setFactChecksRemaining((prev) => prev - 1);
+
+        console.log("Fact check complete:", factCheckResult);
+      } catch (error) {
+        console.error("Fact check failed:", error);
+      } finally {
+        gameState.setLoading(false);
+      }
     }
 
     if (action === "flag") {
