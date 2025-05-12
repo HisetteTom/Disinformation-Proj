@@ -1,160 +1,145 @@
-const axios = require('axios');    
+const axios = require('axios');
 const { extractKeyTerms } = require('./keywordExtractor.js'); 
 const { searchNewsArticles } = require('./newsService.js');  
-require('dotenv').config();         
+require('dotenv').config();
 
 /**
- * Génère des combinaisons de mots-clés de différentes tailles pour fact-checking
- * @param {string[]} keywords - Tableau de mots-clés
- * @param {number} minSize - Taille minimum de combinaison
- * @param {number} maxSize - Taille maximum de combinaison
- * @returns {string[]} - Tableau de requêtes formatées
+ * Generates simple, basic keyword queries for the Google Fact Check API
+ * @param {string[]} keywords - Keywords to use
+ * @returns {string[]} - Formatted queries
  */
-function generateSearchQueries(keywords, minSize = 2, maxSize = 5) {
+function generateFactCheckQueries(keywords) {
   const queries = [];
-  const maxQueriesCount = 5; // Maximum number of queries to generate
   
-  // Ensure size limits don't exceed available keywords
-  minSize = Math.min(minSize, keywords.length);
-  maxSize = Math.min(maxSize, keywords.length);
-  
-  // Always start with the full query containing all keywords
-  if (keywords.length > 0) {
-    queries.push(keywords.join(' AND '));
-  }
-  
-  // Sort keywords by likely importance/relevance
-  // Words like "covid", "vaccine", etc. are more important for fact-checking
-  const sortedKeywords = [...keywords].sort((a, b) => {
-    const priorityTerms = /covid|vaccine|death|virus|pandemic|million|billion|study|report/i;
-    const aIsPriority = priorityTerms.test(a);
-    const bIsPriority = priorityTerms.test(b);
-    
-    if (aIsPriority && !bIsPriority) return -1;
-    if (!aIsPriority && bIsPriority) return 1;
-    return 0;
-  });
-  
-  // Generate combinations with decreasing numbers of terms
-  // Always keeping the most important terms when possible
-  for (let size = maxSize - 1; size >= minSize && queries.length < maxQueriesCount; size--) {
-    // Take the most important keywords first rather than random selection
-    const subset = sortedKeywords.slice(0, size);
-    const query = subset.join(' AND ');
-    
-    if (!queries.includes(query)) {
-      queries.push(query);
-    }
-    
-    // If we need more variety but still with same number of terms
-    if (queries.length < maxQueriesCount && size < keywords.length - 1) {
-      const alternateSubset = [
-        sortedKeywords[0], // Keep the most important keyword
-        ...sortedKeywords.slice(Math.max(1, keywords.length - size + 1))
-      ].slice(0, size);
-      
-      const alternateQuery = alternateSubset.join(' AND ');
-      if (!queries.includes(alternateQuery)) {
-        queries.push(alternateQuery);
-      }
-    }
-  }
-  
-  return queries;
-}
-
-/**
- * Génère des combinaisons de mots-clés spécifiquement pour la recherche d'articles de presse
- * @param {string[]} keywords - Tableau de mots-clés
- * @param {string} originalClaim - L'affirmation originale
- * @returns {string[]} - Tableau de requêtes formatées pour les news
- */
-function generateNewsSearchQueries(keywords, originalClaim) {
-  const queries = [];
-  const maxQueriesCount = 8; // Plus de requêtes pour les news
-  
-  // Identifie les mots-clés importants (comme "covid")
-  const priorityKeywords = keywords.filter(k => 
-    /covid|virus|pandemic|vaccine|death|million|billion|percent|study|report/i.test(k)
+  // Clean all keywords - strip hashtags and special chars
+  const cleanKeywords = keywords.map(word => 
+    word.replace(/^#/, '').replace(/[^\w\s]/g, '').toLowerCase()
   );
   
-  // Extrait les chiffres importants de l'affirmation originale
-  const numbers = extractNumbersWithContext(originalClaim);
-  
-  // Si on a des mots-clés prioritaires, créer des requêtes qui les incluent toujours
-  if (priorityKeywords.length > 0) {
-    // Requête avec tous les mots-clés prioritaires
-    queries.push(priorityKeywords.join(' AND '));
-    
-    // Ajout des nombres importants aux mots-clés prioritaires
-    if (numbers.length > 0) {
-      queries.push([...priorityKeywords, ...numbers].join(' AND '));
-    }
-    
-    // Mélange les autres mots-clés non-prioritaires
-    const normalKeywords = keywords.filter(k => !priorityKeywords.includes(k));
-    
-    // Crée des combinaisons avec au moins un mot prioritaire
-    for (let i = 0; i < Math.min(maxQueriesCount - queries.length, priorityKeywords.length); i++) {
-      const primaryWord = priorityKeywords[i % priorityKeywords.length];
-      const shuffled = [...normalKeywords].sort(() => 0.5 - Math.random());
-      const subset = shuffled.slice(0, Math.min(3, normalKeywords.length));
-      const combined = [primaryWord, ...subset];
-      const query = combined.join(' AND ');
-      if (!queries.includes(query)) {
-        queries.push(query);
-      }
-    }
-  }
-  
-  // Si on n'a pas assez de requêtes, ajouter des requêtes standards
-  if (queries.length < maxQueriesCount) {
-    const standardQueries = generateSearchQueries(keywords, 2, 4);
-    for (const query of standardQueries) {
-      if (!queries.includes(query) && queries.length < maxQueriesCount) {
-        queries.push(query);
-      }
-    }
-  }
-  
-  return queries;
-}
-
-/**
- * Extrait les nombres importants avec leur contexte depuis une affirmation
- * @param {string} claim - L'affirmation originale
- * @returns {string[]} - Tableau de termes numériques avec contexte
- */
-function extractNumbersWithContext(claim) {
-  const results = [];
-  
-  // Trouve les nombres suivis d'unités ou de termes importants
-  const numberPatterns = [
-    /(\d+)\s*(million|billion|thousand|percent|%)/gi,
-    /(\d+)\s*(deaths|cases|people|patients)/gi
-  ];
-  
-  numberPatterns.forEach(pattern => {
-    let match;
-    while ((match = pattern.exec(claim)) !== null) {
-      results.push(match[0].toLowerCase().replace(/\s+/g, ''));
-    }
+  // Set up meaningful query combinations
+  // 1. Single key terms (Google API works best with simple queries)
+  cleanKeywords.slice(0, Math.min(3, cleanKeywords.length)).forEach(term => {
+    queries.push(term);
   });
   
-  return results;
+  // 2. Two-word pairs
+  if (cleanKeywords.length >= 2) {
+    // Try different pairs - don't use Boolean operators
+    for (let i = 0; i < Math.min(3, cleanKeywords.length); i++) {
+      for (let j = i+1; j < Math.min(4, cleanKeywords.length); j++) {
+        const pair = `${cleanKeywords[i]} ${cleanKeywords[j]}`;
+        if (pair.length < 30) { // Keep queries short
+          queries.push(pair);
+        }
+      }
+    }
+  }
+  
+  // 3. Add "fact check" to the most important term if available
+  if (cleanKeywords.length > 0) {
+    queries.push(`${cleanKeywords[0]} fact`);
+  }
+
+  return [...new Set(queries)].slice(0, 5); // Keep only unique queries, max 5
 }
 
 /**
- * Vérifie si une affirmation est vraie ou fausse en cherchant des fact-checks ou des articles pertinents
- * @param {string} claim - L'affirmation à vérifier
- * @returns {Promise<Object>} - Résultat de la vérification (fact-checks ou articles)
+ * Generates news search queries using appropriate operators
+ * @param {string[]} keywords - Keywords to use
+ * @returns {string[]} - Formatted queries
+ */
+function generateNewsQueries(keywords) {
+  const queries = [];
+  
+  // Clean and prepare keywords
+  const cleanKeywords = keywords.map(word => 
+    word.replace(/^#/, '').replace(/[^\w\s]/g, '').toLowerCase()
+  );
+  
+  // News API handles Boolean operators well - use them
+  
+  // 1. Single term queries for key topics
+  if (cleanKeywords.length > 0) {
+    queries.push(cleanKeywords[0]);
+  }
+  
+  // 2. Two terms with AND between important keywords
+  if (cleanKeywords.length >= 2) {
+    queries.push(`${cleanKeywords[0]} AND ${cleanKeywords[1]}`);
+  }
+  
+  // 3. First term AND any of the other terms (useful for qualifying searches)
+  if (cleanKeywords.length >= 3) {
+    const others = cleanKeywords.slice(1, 4).join(' OR ');
+    queries.push(`${cleanKeywords[0]} AND (${others})`);
+  }
+  
+  // 4. Mixed OR terms for broader results when specific terms don't match
+  if (cleanKeywords.length >= 2) {
+    queries.push(cleanKeywords.slice(0, 3).join(' OR '));
+  }
+  
+  return [...new Set(queries)].slice(0, 5); // Unique queries, max 5
+}
+
+/**
+ * Ultra-simplified search for Google Fact Check API
+ * @param {string} query - Search query
+ * @param {string} apiKey - Google API key
+ * @returns {Promise<Object>} - Fact check results
+ */
+async function searchFactCheck(query, apiKey) {
+  try {
+    // Make the query ultra-simple
+    // Take only first few words, remove all special chars
+    let cleanedQuery = query
+      .replace(/['"(){}\[\]]/g, '')        // Remove brackets and quotes
+      .replace(/\b(AND|OR|NOT)\b/gi, ' ')  // Remove Boolean operators
+      .replace(/[^\w\s]/g, ' ')           // Replace other special chars with spaces
+      .replace(/\s+/g, ' ')               // Normalize spaces
+      .trim();
+    
+    // Keep only 1-2 words maximum for best results
+    const words = cleanedQuery.split(' ').filter(Boolean);
+    if (words.length > 2) {
+      cleanedQuery = words.slice(0, 2).join(' ');
+    }
+    
+    console.log(`Sending to Google Fact Check API: "${cleanedQuery}"`);
+    
+    // Encode components separately
+    const encodedQuery = encodeURIComponent(cleanedQuery);
+    
+    // Full URL with properly encoded components
+    const url = `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodedQuery}&key=${apiKey}&languageCode=en&pageSize=5`;
+    
+    // Try with different headers and options
+    const response = await axios.get(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Fact check API error:', error.message);
+    return { claims: [] }; 
+  }
+}
+
+/**
+ * Main fact-checking function
+ * @param {string} claim - The claim to check
+ * @returns {Promise<Object>} - Verification results
  */
 async function checkFact(claim) {
   try {
     const API_KEY = process.env.FACT_CHECK_API_KEY;
     
-    const keyTerms = extractKeyTerms(claim, 6); // Extraire plus de termes pour avoir plus de combinaisons
-    console.log('Affirmation originale:', claim);
+    // Extract keywords
+    const keyTerms = extractKeyTerms(claim, 6);
     console.log('Termes de recherche extraits:', keyTerms);
     
     let result = {
@@ -162,91 +147,54 @@ async function checkFact(claim) {
       message: 'Aucune information trouvée'
     };
 
+    // Try fact checking first
     if (API_KEY) {
-      // Génère plusieurs requêtes avec différentes combinaisons de mots-clés
-      const searchQueries = generateSearchQueries(keyTerms, 2, 4);
-      console.log('Requêtes générées pour fact-checking:', searchQueries);
+      const factQueries = generateFactCheckQueries(keyTerms);
+      console.log('Requêtes pour fact-checking:', factQueries);
       
-      // Essaie chaque requête jusqu'à trouver des résultats
-      for (const query of searchQueries) {
-        console.log(`Essai de la requête: "${query}"`);
+      for (const query of factQueries) {
         const factCheckResults = await searchFactCheck(query, API_KEY);
         
         if (factCheckResults.claims && factCheckResults.claims.length > 0) {
-          result = {
+          return {
             found: true,
-            result: factCheckResults.claims[0],    // Le fact-check le plus pertinent
-            allResults: factCheckResults.claims,   // Tous les fact-checks trouvés
-            type: 'factCheck'                     // Type de résultat
+            result: factCheckResults.claims[0],
+            allResults: factCheckResults.claims,
+            type: 'factCheck',
+            query: query
           };
-          break; // Sortie de la boucle si des résultats sont trouvés
         }
+        
+        // Small delay between API calls
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-    } else {
-      console.log('Pas de clé API de fact-check disponible, recherche ignorée');
     }
     
-    // Si aucun fact-check n'est trouvé, chercher des articles de presse
-    if (!result.found) {
-      console.log('Aucun fact-check trouvé, recherche articles de presse...');
-      // Utiliser des requêtes optimisées pour la recherche d'articles
-      const newsQueries = generateNewsSearchQueries(keyTerms, claim);
-      console.log('Requêtes générées pour news:', newsQueries);
+    // If no fact-checks found, try news articles
+    console.log('Recherche articles de presse...');
+    const newsQueries = generateNewsQueries(keyTerms);
+    console.log('Requêtes pour news:', newsQueries);
+    
+    for (const query of newsQueries) {
+      const newsResults = await searchNewsArticles(query);
       
-      // Essaie chaque requête jusqu'à trouver des articles
-      for (const query of newsQueries) {
-        console.log(`Essai de la requête news: "${query}"`);
-        const newsResults = await searchNewsArticles(query);
-        
-        if (newsResults.found) {
-          result = {
-            found: true,
-            articles: newsResults.articles,  // Articles trouvés
-            type: 'news'                     // Type de résultat = articles
-          };
-          break; // Sortie de la boucle si des articles sont trouvés
-        }
+      if (newsResults.found) {
+        return {
+          found: true,
+          articles: newsResults.articles,
+          type: 'news',
+          query: query
+        };
       }
     }
 
     return result;
   } catch (error) {
-    // Gestion des erreurs
-    console.error('Erreur dans le processus de fact-checking:', error);
+    console.error('Erreur de fact-checking:', error);
     return {
       found: false,
-      error: error.message,
       message: 'Erreur lors du traitement de la requête.'
     };
-  }
-}
-
-/**
- * Recherche des fact-checks via l'API Google Fact Check Tools
- * @param {string} query - Termes de recherche
- * @param {string} apiKey - Clé API pour Google Fact Check Tools
- * @returns {Promise<Object>} - Résultats des fact-checks
- */
-async function searchFactCheck(query, apiKey) {
-  try {
-    // Encodage de la requête pour l'URL
-    const encodedQuery = encodeURIComponent(query);
-    const url = `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodedQuery}&key=${apiKey}&languageCode=en`;
-
-    console.log(`Recherche de fact-checks pour: "${query}"`);
-    
-    // Envoi de la requête à l'API
-    const response = await axios.get(url, {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    // En cas d'erreur, on log et on renvoie un tableau vide pour continuer avec la recherche d'articles
-    console.error('Echec requete api:', error.message);
-    return { claims: [] }; 
   }
 }
 
