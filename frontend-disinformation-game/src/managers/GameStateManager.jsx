@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 60 * 1000; // 3 minutes
+export const GAME_DURATION = 25 * 1000; 
 // Score awarded every 2 seconds
 export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;

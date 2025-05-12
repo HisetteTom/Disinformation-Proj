@@ -8,14 +8,10 @@ export function useUpgradeEffects(user) {
 
     if (!user) return effects;
 
-    // Get user upgrades (replace with actual user data)
-    const userUpgrades = user.upgrades || {
-      fact_checker: 0,
-      speed_bonus: 0,
-      mistake_shield: 0,
-      time_bonus: 0,
-    };
-
+    // Get user upgrades from the user object
+    // This works with both the user profile from the backend API and the auth user
+    const userUpgrades = user.upgrades || {};
+    
     // Calculate effects for each upgrade
     for (let upgradeId in userUpgrades) {
       const upgradeDefinition = Upgrade.find((element) => element.id === upgradeId);

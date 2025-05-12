@@ -10,9 +10,28 @@ router.use(authMiddleware);
 // Get user profile
 router.get("/profile", async (req, res) => {
   try {
+    const userId = req.user.userId;
+    
+    // Fetch the complete user data from Firestore including upgrades
+    const userRef = adminDb.collection("users").doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const userData = userDoc.data();
+    
+    // Combine Firebase auth user data with Firestore user data
+    const completeUserData = {
+      ...req.user,
+      money: userData.money || 0,
+      upgrades: userData.upgrades || {}
+    };
+    
     res.status(200).json({
       message: "Profile retrieved successfully",
-      user: req.user,
+      user: completeUserData,
     });
   } catch (error) {
     console.error("Profile error:", error);

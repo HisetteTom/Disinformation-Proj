@@ -9,7 +9,8 @@ export function LoadingState() {
   );
 }
 
-export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user }) {
+// Update the GameOver component to include onProfileUpdate in its parameters
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user, authUser, onProfileUpdate }) {
   var [shop, setShop] = useState(false);
 
   return (
@@ -41,7 +42,13 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
       <button onClick={() => setShop(true)} className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">
         Upgrade Shop
       </button>
-      {shop && <MenuUpgrade user={user} Score={score} Diplay={() => setShop(false)} />}
+      {shop && <MenuUpgrade 
+        user={authUser} 
+        userProfile={user} 
+        Score={score} 
+        Diplay={() => setShop(false)} 
+        onProfileUpdate={onProfileUpdate} 
+      />}
     </div>
   );
 }
@@ -54,7 +61,7 @@ export function TimerDisplay({ timeRemaining, feedSpeed, changeFeedSpeed, score 
   return (
     <div className="flex items-center space-x-4">
       <div className="rounded-full bg-blue-100 px-4 py-1 font-bold text-blue-600">Score: {score}</div>
-      <div className="text-lg font-semibold">
+      <div className="text-lg font-semibold game-timer">
         {minutes}:{seconds.toString().padStart(2, "0")}
       </div>
       <div className="flex items-center space-x-2">
@@ -65,7 +72,7 @@ export function TimerDisplay({ timeRemaining, feedSpeed, changeFeedSpeed, score 
           <option value={2}>Fast</option>
         </select>
       </div>
-    </div>
+    </div>  
   );
 }
 

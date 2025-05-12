@@ -15,13 +15,51 @@ function ModeratorGame({ onReset, user, onLogin }) {
   const [processedTweets, setProcessedTweets] = useState([]);
   // Track if money has been saved to prevent duplicate updates
   const [moneySaved, setMoneySaved] = useState(false);
+  // Store the user's profile with upgrades
+  const [userProfile, setUserProfile] = useState(null);
+  // Track if we're fetching the profile
+  const [fetchingProfile, setFetchingProfile] = useState(false);
 
-  // Get upgrade effects based on user
-  const upgradeEffects = useUpgradeEffects(user);
+  // Fetch user profile (with upgrades) from backend when user changes
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) {
+        setUserProfile(null);
+        return;
+      }
+      
+      try {
+        setFetchingProfile(true);
+        const response = await fetch('http://localhost:3001/api/protected/profile', {
+          headers: {
+            'Authorization': `Bearer ${user.stsTokenManager.accessToken}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch user profile');
+        }
+        
+        const data = await response.json();
+        console.log('Fetched user profile:', data.user);
+        setUserProfile(data.user);
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setFetchingProfile(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user]);
+
+  // Get upgrade effects based on user PROFILE (which contains upgrades)
+  const upgradeEffects = useUpgradeEffects(userProfile);
+  
   const gameState = useGameState(onReset, upgradeEffects);
   const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
 
-  // Log upgrade values for debugging
+  // Log
   useEffect(() => {
     console.log("Current Upgrades:", {
       "Fact Check Bonus": upgradeEffects.getFactChecksBonus(),
@@ -83,6 +121,10 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
           // Mark money as saved to prevent duplicate updates
           setMoneySaved(true);
+          
+          // Update local userProfile with new money value
+          setUserProfile(prev => prev ? {...prev, money: newMoney} : null);
+          
           console.log(`Money updated successfully: ${currentMoney} + ${score} = ${newMoney}`);
         } catch (error) {
           console.error("Error updating money:", error);
@@ -115,8 +157,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
     // Reset money saved flag
     setMoneySaved(false);
-
-    // Apply upgrade effects before starting game
+    
     const initialFactChecks = 5 + upgradeEffects.getFactChecksBonus();
     console.log(`Starting game with ${initialFactChecks} fact checks (base: 5, bonus: ${upgradeEffects.getFactChecksBonus()})`);
 
@@ -139,8 +180,8 @@ function ModeratorGame({ onReset, user, onLogin }) {
     );
   };
 
-  // Render loading state if data is loading
-  if (isLoading) {
+  // Render loading state if data is loading or we're fetching profile
+  if (isLoading || (user && fetchingProfile)) {
     return <LoadingState />;
   }
 
@@ -151,7 +192,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
 
   // Render game over screen if game is over
   if (gameOver) {
-    return <GameOver score={score} messagesHandled={messagesHandled} onPlayAgain={onReset} scoreBreakdown={scoreBreakdown} timeScore={timeScore} user={user} />;
+    return <GameOver score={score} messagesHandled={messagesHandled} onPlayAgain={onReset} scoreBreakdown={scoreBreakdown} timeScore={timeScore} user={userProfile || user} authUser= {user} onProfileUpdate={(updatedProfile) =>{setUserProfile(updatedProfile);}} />;
   }
 
   // Render game play area if game is active

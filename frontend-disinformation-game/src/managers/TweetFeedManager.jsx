@@ -15,7 +15,7 @@ export function startGame(
   GAME_DURATION,
   startTweetRefresh,
   setGameOver,
-  startTimeScoring, // Add this new parameter
+  startTimeScoring,
 ) {
   setGameStarted(true);
   setTimeRemaining(GAME_DURATION);
@@ -51,7 +51,9 @@ export function startGame(
     startTweetRefresh();
   }, 1000);
 }
+
 // Periodically refresh the tweet feed
+// Modified to accept timeRemaining as a parameter to prevent tweets in the last 5 seconds
 export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRef, gameMessages, gameOver, setMessageFeed) {
   return () => {
     if (refreshTimerRef.current) {
@@ -63,7 +65,20 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
     let isAddingTweet = false;
 
     refreshTimerRef.current = setInterval(() => {
-      if (!isAddingTweet && messagesIndexRef.current < gameMessages.length && !gameOver) {
+      // Get current remaining time from the DOM instead of passing as parameter
+      // This is cleaner as it doesn't require modifying the component interface
+      const timeRemainingElement = document.querySelector('.game-timer');
+      const timeRemaining = timeRemainingElement ? 
+        parseTimeDisplay(timeRemainingElement.textContent) : 999999;
+      
+      // Don't add new tweets if less than 5 seconds remain (5000 ms)
+      const isFinalCountdown = timeRemaining < 5000;
+
+      if (!isAddingTweet && 
+          messagesIndexRef.current < gameMessages.length && 
+          !gameOver && 
+          !isFinalCountdown) {  // This is the new check
+        
         isAddingTweet = true;
 
         const nextTweet = {
@@ -86,6 +101,21 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
       }
     }, interval);
   };
+}
+
+
+
+function parseTimeDisplay(timeDisplay) {
+  if (!timeDisplay) return 999999;
+  
+  const parts = timeDisplay.split(':');
+  if (parts.length === 2) {
+    const minutes = parseInt(parts[0], 10);
+    const seconds = parseInt(parts[1], 10);
+    return (minutes * 60 + seconds) * 1000;
+  }
+  
+  return 999999; 
 }
 
 // Evaluate tweet content for misinformation
