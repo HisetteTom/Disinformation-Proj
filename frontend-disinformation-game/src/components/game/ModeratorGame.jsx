@@ -60,14 +60,14 @@ function ModeratorGame({ onReset, user, onLogin }) {
   const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
 
   // Log
-  useEffect(() => {
-    console.log("Current Upgrades:", {
-      "Fact Check Bonus": upgradeEffects.getFactChecksBonus(),
-      "Speed Multiplier": upgradeEffects.getSpeedMultiplier(),
-      "Mistake Penalty Reduction": upgradeEffects.getMistakePenaltyReduction(),
-      "Time Score Bonus": upgradeEffects.getTimeScoreBonus(),
-    });
-  }, [upgradeEffects]);
+  // useEffect(() => {
+  //   console.log("Current Upgrades:", {
+  //     "Fact Check Bonus": upgradeEffects.getFactChecksBonus(),
+  //     "Speed Multiplier": upgradeEffects.getSpeedMultiplier(),
+  //     "Mistake Penalty Reduction": upgradeEffects.getMistakePenaltyReduction(),
+  //     "Time Score Bonus": upgradeEffects.getTimeScoreBonus(),
+  //   });
+  // }, [upgradeEffects]);
 
   // Get game actions and scoring functionality
   const { scoreBreakdown, setScoreBreakdown, handleTweetClick, handleCloseModal, handleModeration } = useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets);

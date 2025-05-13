@@ -11,8 +11,39 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
     missedMisinformation: 0,
     speedBonus: 0,
   });
+  
+  // Add a state to track all tweets that appeared during the game with timestamps
+  const [allGameTweets, setAllGameTweets] = useState([]);
 
   const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score, gameStarted, timeScoreTimerRef, setTimeScore } = gameState;
+
+  // Track all tweets that appear in the feed during gameplay WITH TIMESTAMPS
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+      // Add any new tweets to our tracking array with a timestamp
+      messageFeed.forEach(tweet => {
+        if (!allGameTweets.some(t => t.id === tweet.id)) {
+          setAllGameTweets(prev => [...prev, {
+            ...tweet,
+            appearedAt: Date.now() // Track when tweet appeared
+          }]);
+        }
+      });
+    }
+  }, [messageFeed, gameStarted, gameOver]);
+  
+  // Reset tracking when game starts
+  useEffect(() => {
+    if (gameStarted) {
+      setAllGameTweets([]);
+      setScoreBreakdown({
+        correctFlags: 0,
+        incorrectFlags: 0,
+        missedMisinformation: 0,
+        speedBonus: 0,
+      });
+    }
+  }, [gameStarted]);
 
   // Calculate speed multiplier for scoring
   const getSpeedMultiplier = (speed) => {
@@ -20,6 +51,26 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
     if (speed === 1) return 1.5; // Normal
     if (speed === 2) return 2; // Fast
     return 1; // Default
+  };
+  
+  // Calculate speed bonus based on reaction time
+  const calculateSpeedBonus = (reactionTimeMs) => {
+    // Max bonus of 50-60 points, decreasing over 10 seconds
+    const maxBonus = 60;
+    const minBonus = 0;
+    const maxReactionTime = 10000; // 10 seconds
+    
+    // Linear decay from max bonus to min bonus over maxReactionTime
+    let bonus = Math.max(
+      minBonus,
+      maxBonus - (maxBonus * (reactionTimeMs / maxReactionTime))
+    );
+    
+    // Apply upgrade effects for speed bonus
+    const upgradeMultiplier = upgradeEffects.getSpeedMultiplier();
+    bonus = Math.round(bonus * upgradeMultiplier);
+    
+    return Math.max(0, Math.min(maxBonus, bonus)); // Clamp between 0 and maxBonus
   };
 
   // Handle tweet selection
@@ -77,42 +128,70 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
       const message = messageFeed.find((msg) => msg.id === messageId);
       if (!message) return;
 
+      console.log("Message object to check:", message);
+
       // Check if message is misinformation
-      const isMisinformation = evaluateTweetContent(message.content);
+      const isMisinformation = evaluateTweetContent(message);
+      console.log("Is misinformation result:", isMisinformation);
 
       // Apply speed-based scoring
-      const speedMultiplier = getSpeedMultiplier(feedSpeed);
+      const gameSpeedMultiplier = getSpeedMultiplier(feedSpeed);
 
       // Track this tweet as processed
-      setProcessedTweets((prev) => [
-        ...prev,
-        {
-          id: messageId,
-          wasMisinformation: isMisinformation,
-          wasFlagged: true,
-        },
-      ]);
+      setProcessedTweets((prev) => {
+        const newProcessed = [
+          ...prev,
+          {
+            id: messageId,
+            wasMisinformation: isMisinformation,
+            wasFlagged: true,
+          },
+        ];
+        console.log("Processed tweets updated:", newProcessed);
+        return newProcessed;
+      });
 
       if (isMisinformation) {
-        // Correct flagging - calculate points with upgrades
-        const basePoints = 10;
-        const speedBonus = speedMultiplier;
-        const upgradeBonus = upgradeEffects.getSpeedMultiplier();
-        const pointsEarned = Math.round(basePoints * speedBonus * upgradeBonus);
-
-        setBaseScore(baseScore + pointsEarned);
-
-        // Update score breakdown
+        console.log("CORRECT flag - tweet is misinformation");
+        
+        // Calculate base points for correct flag
+        const basePoints = 10; // Base points for correct flag
+        const bonusMultiplier = upgradeEffects.getSpeedMultiplier();
+        const totalPoints = Math.round(basePoints * gameSpeedMultiplier * bonusMultiplier);
+        
+        // Calculate speed bonus based on reaction time
+        let speedBonus = 0;
+        const originalTweet = allGameTweets.find(t => t.id === messageId);
+        
+        if (originalTweet && originalTweet.appearedAt) {
+          const reactionTimeMs = Date.now() - originalTweet.appearedAt;
+          speedBonus = calculateSpeedBonus(reactionTimeMs);
+          
+          console.log(`Reaction time: ${reactionTimeMs}ms, Speed bonus: ${speedBonus} points`);
+          
+          // Update speed bonus in score breakdown
+          setScoreBreakdown(prev => ({
+            ...prev,
+            speedBonus: prev.speedBonus + speedBonus
+          }));
+          
+          // Add speed bonus to base score
+          setBaseScore(baseScore + totalPoints + speedBonus);
+        } else {
+          // Just add base points if no timestamp found
+          setBaseScore(baseScore + totalPoints);
+        }
+        
+        // Update score breakdown for correct flags
         setScoreBreakdown((prev) => ({
           ...prev,
           correctFlags: prev.correctFlags + 1,
-          speedBonus: prev.speedBonus + (pointsEarned - basePoints),
         }));
       } else {
-        // Wrong flagging - apply penalty reduction from upgrades
+        console.log("INCORRECT flag - tweet is not misinformation");
         const basePenalty = 5;
         const penaltyMultiplier = upgradeEffects.getMistakePenaltyReduction();
-        const penaltyPoints = Math.round(basePenalty * speedMultiplier * penaltyMultiplier);
+        const penaltyPoints = Math.round(basePenalty * gameSpeedMultiplier * penaltyMultiplier);
 
         setBaseScore(Math.max(0, baseScore - penaltyPoints));
 
@@ -156,13 +235,25 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
 
   // Calculate penalties at game end
   useEffect(() => {
-    if (gameOver && processedTweets.length > 0) {
-      const missedMisinformationCount = messageFeed.filter((feedMsg) => {
-        // Check if this message is misinformation
-        const isMisinformation = evaluateTweetContent(feedMsg.content);
-        // Only count it if it's misinformation and still in the feed
-        return isMisinformation;
+    if (gameOver) {
+      // Filter out the tweets that were processed (either flagged or approved)
+      const processedIds = processedTweets.map(tweet => tweet.id);
+      
+      // Calculate missed misinformation from ALL tweets that appeared during the game
+      const missedMisinformationCount = allGameTweets.filter((tweet) => {
+        // Only count tweets that were misinformation AND weren't processed
+        const isMisinformation = evaluateTweetContent(tweet);
+        const wasProcessed = processedIds.includes(tweet.id);
+        
+        // Log details for debugging
+        if (isMisinformation && !wasProcessed) {
+          console.log("Missed misinformation:", tweet);
+        }
+        
+        return isMisinformation && !wasProcessed;
       }).length;
+      
+      console.log(`Found ${missedMisinformationCount} missed misinformation tweets out of ${allGameTweets.length} total tweets`);
 
       const basePenalty = 5;
       const penaltyReduction = upgradeEffects.getMistakePenaltyReduction();
@@ -177,7 +268,7 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
         }));
       }
     }
-  }, [gameOver, messageFeed, processedTweets.length]);
+  }, [gameOver]);
 
   return {
     scoreBreakdown,

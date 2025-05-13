@@ -119,6 +119,27 @@ function parseTimeDisplay(timeDisplay) {
 }
 
 // Evaluate tweet content for misinformation
-export function evaluateTweetContent(content) {
-  return /covid|vaccine|hoax|engineered|fake|conspiracy|secret|truth|exposed|leaked|bill gates|nanochips|tracking|mind control/i.test(content);
+export function evaluateTweetContent(message) {
+  console.log('Tweet evaluation input:', message);
+  
+  // If we're passed a complete message object
+  if (typeof message === 'object' && message !== null) {
+    console.log('Message properties:', Object.keys(message));
+    
+    // Use the isDisinfo field if available
+    if ('isDisinfo' in message) {
+      console.log('isDisinfo value found:', message.isDisinfo, typeof message.isDisinfo);
+      return message.isDisinfo;
+    } else {
+      console.log('isDisinfo property NOT found in message!');
+    }
+    
+    // Otherwise fall back to the content
+    message = message.content || "";
+  }
+  
+  // This is just a backup check in case isDisinfo is not available
+  const regexResult = /covid|vaccine|hoax|engineered|fake|conspiracy|secret|truth|exposed|leaked|bill gates|nanochips|tracking|mind control/i.test(message);
+  console.log('Falling back to regex, result:', regexResult);
+  return regexResult;
 }

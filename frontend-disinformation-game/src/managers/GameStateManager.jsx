@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 25 * 1000; 
+export const GAME_DURATION = 40 * 1000;
 // Score awarded every 2 seconds
 export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;
@@ -53,10 +53,10 @@ export function useGameState(onReset, upgradeEffects = null) {
     loadTweets();
   }, []);
 
- useEffect(() => {
+  useEffect(() => {
     const newTotalScore = baseScore + timeScore;
     setScore(newTotalScore);
-    console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
+    //console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
   }, [baseScore, timeScore]);
 
   const startTimeScoring = () => {
@@ -66,13 +66,13 @@ export function useGameState(onReset, upgradeEffects = null) {
       timeScoreTimerRef.current = null;
     }
 
-    console.log("Setting up time scoring once at game start");
+    //console.log("Setting up time scoring once at game start");
 
     // Start a simple timer that adds 5 points every 2 seconds
     timeScoreTimerRef.current = setInterval(() => {
       setTimeScore((prev) => {
         const newScore = prev + TIME_SCORE_AMOUNT;
-        console.log(`Time score +${TIME_SCORE_AMOUNT}: ${newScore}`);
+        //console.log(`Time score +${TIME_SCORE_AMOUNT}: ${newScore}`);
         return newScore;
       });
     }, TIME_SCORE_INTERVAL);
@@ -114,17 +114,29 @@ export function useGameState(onReset, upgradeEffects = null) {
       setIsLoading(true);
       const tweetsData = await fetchTweets();
 
-      const formattedTweets = tweetsData.map((tweet, index) => ({
-        id: index + 1,
-        author: tweet.Username,
-        content: tweet.Text,
-        timestamp: parseTwitterDate(tweet.Created_At),
-        likes: parseInt(tweet.Likes) || 0,
-        shares: parseInt(tweet.Retweets) || 0,
-        profilePic: tweet.Profile_Pic,
-        mediaFiles: tweet.Media_Files ? tweet.Media_Files.split("|") : [],
-        isNew: true,
-      }));
+      // Debug the raw tweet data
+      console.log("Raw tweet data first item:", tweetsData[0]);
+
+      const formattedTweets = tweetsData.map((tweet, index) => {
+        // Check the exact value/type of is_disinfo
+        console.log(`Tweet ${index} is_disinfo:`, tweet.is_disinfo, typeof tweet.is_disinfo);
+
+        return {
+          id: index + 1,
+          author: tweet.Username,
+          content: tweet.Text,
+          timestamp: parseTwitterDate(tweet.Created_At),
+          likes: parseInt(tweet.Likes) || 0,
+          shares: parseInt(tweet.Retweets) || 0,
+          profilePic: tweet.Profile_Pic,
+          mediaFiles: tweet.Media_Files ? tweet.Media_Files.split("|") : [],
+          isNew: true,
+          isDisinfo: tweet.is_disinfo === true || tweet.is_disinfo === "true",
+        };
+      });
+
+      // Check a formatted tweet
+      console.log("Formatted tweet example:", formattedTweets[0]);
 
       // Use session ID to ensure different randomization each time
       const seed = (sessionIdRef.current % 1000) / 1000;
