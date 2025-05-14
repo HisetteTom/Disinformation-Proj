@@ -6,13 +6,14 @@ import TweetModal from "../tweets/TweetModal";
 function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messageFeed, handleTweetClick, isModalOpen, currentMessage, handleCloseModal, handleModeration, factCheckResults, loading, factChecksRemaining }) {
   return (
     <>
-      <div className="rounded-lg bg-gray-50 p-6 shadow-md">
+      <div className="rounded-lg bg-gray-50 p-6 shadow-md ">
         <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-3">
           <h1 className="text-2xl font-bold">Truth Social</h1>
           <TimerDisplay timeRemaining={timeRemaining} feedSpeed={feedSpeed} changeFeedSpeed={changeFeedSpeed} score={score} />
         </div>
 
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-4 flex">
+          <div>
           {messageFeed.length === 0 ? (
             <p className="text-center text-gray-500 italic">Waiting for tweets...</p>
           ) : (
@@ -26,11 +27,13 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
               </div>
             ))
           )}
+          </div>
+      {isModalOpen && currentMessage && <TweetModal message={currentMessage} onClose={handleCloseModal} onModerate={handleModeration} factCheckResult={factCheckResults[currentMessage.id]} loading={loading} factChecksRemaining={factChecksRemaining} />}
+          
         </div>
       </div>
 
       {/* Tweet Modal with Fact Check Panel */}
-      {isModalOpen && currentMessage && <TweetModal message={currentMessage} onClose={handleCloseModal} onModerate={handleModeration} factCheckResult={factCheckResults[currentMessage.id]} loading={loading} factChecksRemaining={factChecksRemaining} />}
     </>
   );
 }

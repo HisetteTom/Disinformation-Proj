@@ -19,3 +19,4 @@ backend-disinformation-game/downloaded_images/
 backend-disinformation-game/profile_pics/
 backend-disinformation-game/tweets.csv
 backend-disinformation-game/GCP_KEYS.json
+backend-disinformation-game/.firebaserc

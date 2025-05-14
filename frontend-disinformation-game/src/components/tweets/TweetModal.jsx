@@ -5,7 +5,7 @@ import { FactCheckPanel } from "../game/GamePanels";
 function TweetModal({ message, onClose, onModerate, factCheckResult, loading, factChecksRemaining }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className=" inset-0 items-center space-y-4"
       onClick={onClose} // Add this onClick handler to close when clicking the backdrop
     >
       <div
