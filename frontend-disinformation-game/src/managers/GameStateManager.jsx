@@ -59,7 +59,7 @@ export function useGameState(onReset, upgradeEffects = null) {
     //console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
   }, [baseScore, timeScore]);
 
-  const startTimeScoring = () => {
+  const startTimeScoring = (upgradeBonus = 0) => {
     // Clear any existing timer first
     if (timeScoreTimerRef.current) {
       clearInterval(timeScoreTimerRef.current);
@@ -71,7 +71,7 @@ export function useGameState(onReset, upgradeEffects = null) {
     // Start a simple timer that adds 5 points every 2 seconds
     timeScoreTimerRef.current = setInterval(() => {
       setTimeScore((prev) => {
-        const newScore = prev + TIME_SCORE_AMOUNT;
+        const newScore = Math.round( prev + (TIME_SCORE_AMOUNT * (1 + upgradeBonus)));
         //console.log(`Time score +${TIME_SCORE_AMOUNT}: ${newScore}`);
         return newScore;
       });
