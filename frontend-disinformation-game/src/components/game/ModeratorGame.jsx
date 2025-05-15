@@ -176,7 +176,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
       GAME_DURATION,
       startTweetRefresh,
       setGameOver,
-      gameState.startTimeScoring,
+      gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
     );
   };
 
