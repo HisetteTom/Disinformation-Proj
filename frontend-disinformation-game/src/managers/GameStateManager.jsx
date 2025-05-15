@@ -59,7 +59,7 @@ export function useGameState(onReset, upgradeEffects = null) {
     //console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
   }, [baseScore, timeScore]);
 
-  const startTimeScoring = (upgradeBonus = 0) => {
+const startTimeScoring = (upgradeBonus = 0) => {
     // Clear any existing timer first
     if (timeScoreTimerRef.current) {
       clearInterval(timeScoreTimerRef.current);

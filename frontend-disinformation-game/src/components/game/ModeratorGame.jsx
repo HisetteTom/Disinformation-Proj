@@ -20,7 +20,7 @@ function ModeratorGame({ onReset, user, onLogin }) {
   // Track if we're fetching the profile
   const [fetchingProfile, setFetchingProfile] = useState(false);
   //LOADING SCREEN B4 GAME STARTS
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // Fetch user profile (with upgrades) from backend when user changes
   useEffect(() => {
@@ -159,30 +159,64 @@ const handleStartGame = async () => {
   // Reset processed tweets list
   setProcessedTweets([]);
 
-    // Reset money saved flag
-    setMoneySaved(false);
+  // Reset money saved flag
+  setMoneySaved(false);
     
-    const initialFactChecks = 5 + upgradeEffects.getFactChecksBonus();
-    console.log(`Starting game with ${initialFactChecks} fact checks (base: 5, bonus: ${upgradeEffects.getFactChecksBonus()})`);
+  const initialFactChecks = 5 + upgradeEffects.getFactChecksBonus();
+  console.log(`Starting game with ${initialFactChecks} fact checks (base: 5, bonus: ${upgradeEffects.getFactChecksBonus()})`);
 
-    startGame(
-      setGameStarted,
-      setTimeRemaining,
-      setMessageFeed,
-      setFactCheckResults,
-      setScore,
-      setMessagesHandled,
-      () => setFactChecksRemaining(initialFactChecks), // Apply upgrade bonus
-      messagesIndexRef,
-      gameTimerRef,
-      refreshTimerRef,
-      timeScoreTimerRef,
-      GAME_DURATION,
-      startTweetRefresh,
-      setGameOver,
-      gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
-    );
-  };
+  // Wait for tweets to be loaded if they're not ready yet
+  if (gameMessages.length === 0) {
+    console.log("Waiting for tweets to load...");
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  startGame(
+    setGameStarted,
+    setTimeRemaining,
+    setMessageFeed,
+    setFactCheckResults,
+    setScore,
+    setMessagesHandled,
+    () => setFactChecksRemaining(initialFactChecks),
+    messagesIndexRef,
+    gameTimerRef,
+    refreshTimerRef,
+    timeScoreTimerRef,
+    GAME_DURATION,
+    startTweetRefresh,
+    setGameOver,
+    () => gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
+  );
+  
+  // KEY FIX: Add the first tweet immediately
+  if (gameMessages.length > 0) {
+    const firstTweet = {
+      ...gameMessages[0],
+      isNew: true,
+      appearedAt: Date.now() // Add timestamp for speed bonus calculation
+    };
+    
+    console.log("Adding first tweet immediately:", firstTweet.author);
+    
+    // Add the first tweet to the feed immediately
+    setMessageFeed([firstTweet]);
+    
+    // Update the message index since we've used the first tweet
+    messagesIndexRef.current = 1;
+    
+    // Remove "new" status after animation completes
+    setTimeout(() => {
+      setMessageFeed(prev => prev.map(msg => ({ ...msg, isNew: false })));
+    }, 600);
+  }
+  
+  // Keep loading screen visible long enough to see the first tweet appear
+  setTimeout(() => {
+    console.log("Setting isInitializing to false");
+    setIsInitializing(false);
+  }, 1500);
+};
 
   // Render loading state if data is loading or we're fetching profile
   if (isLoading || (user && fetchingProfile)) {
