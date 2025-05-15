@@ -185,7 +185,18 @@ function NoResults({ message, onModerate, messageId }) {
   );
 }
 
-// Missing component - ActionButtons
+export function GameLoadingState() {
+  return (
+    <div className="flex h-64 flex-col items-center justify-center">
+      <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+      <p className="text-lg text-gray-600">Preparing your game...</p>
+      <p className="mt-2 text-sm text-gray-500">The first tweets will appear momentarily</p>
+    </div>
+  );
+}
+
+
+
 function ActionButtons({ onModerate, messageId }) {
   return (
     <div className="mt-4 flex gap-3">
@@ -198,6 +209,7 @@ function ActionButtons({ onModerate, messageId }) {
 
 export default {
   LoadingState,
+  GameLoadingState,
   GameOver,
   FactCheckPanel,
   TimerDisplay,

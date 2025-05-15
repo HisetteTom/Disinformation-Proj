@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 40 * 1000;
+export const GAME_DURATION =5* 60 * 1000;
 // Score awarded every 2 seconds
 export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;
@@ -59,7 +59,7 @@ export function useGameState(onReset, upgradeEffects = null) {
     //console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
   }, [baseScore, timeScore]);
 
-  const startTimeScoring = (upgradeBonus = 0) => {
+const startTimeScoring = (upgradeBonus = 0) => {
     // Clear any existing timer first
     if (timeScoreTimerRef.current) {
       clearInterval(timeScoreTimerRef.current);
