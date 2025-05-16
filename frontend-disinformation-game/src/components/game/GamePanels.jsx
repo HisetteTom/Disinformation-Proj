@@ -22,17 +22,32 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
       <div className="mb-6 border-t border-b border-gray-200 py-4">
         <h3 className="mb-2 font-bold">Score Breakdown:</h3>
         <ul className="space-y-1 text-sm">
+
+          {(scoreBreakdown.correctFlags > 0) && 
           <li className="text-green-600">
             Correct flags: +{scoreBreakdown.correctFlags * 10} points ({scoreBreakdown.correctFlags} tweets)
           </li>
+          }
+
+          {(scoreBreakdown.incorrectFlags > 0) && 
           <li className="text-red-600">
             Incorrect flags: -{scoreBreakdown.incorrectFlags * 5} points ({scoreBreakdown.incorrectFlags} tweets)
           </li>
+          }
+
+          {(scoreBreakdown.missedMisinformation > 0) &&
           <li className="text-red-600">
             Missed misinformation: -{scoreBreakdown.missedMisinformation * 5} points ({scoreBreakdown.missedMisinformation} tweets)
           </li>
+          }
+
+          {(scoreBreakdown.speedBonus > 0) && 
           <li className="text-blue-600">Speed bonus: +{scoreBreakdown.speedBonus} points</li>
+          }
+
+          {(timeScore > 0 ) &&
           <li className="font-medium text-green-600">Time bonus: +{timeScore} points</li>
+}
         </ul>
       </div>
 
