@@ -5,6 +5,7 @@ const factCheckRoutes = require('./routes/factCheckRoutes');
 const tweetRoutes = require('./routes/tweetRoutes');
 const userRoutes = require('./routes/userRoutes');
 const protectedRoutes = require('./routes/protectedRoutes');
+const debugRoutes = require('./routes/debugRoutes'); 
 
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use('/api/factcheck', factCheckRoutes);
 app.use('/api/tweets', tweetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/protected', protectedRoutes);
+app.use('/api/debug', debugRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

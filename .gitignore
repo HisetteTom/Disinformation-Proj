@@ -11,6 +11,7 @@ frontend-disinformation-game/dist/
 frontend-disinformation-game/dist-ssr/
 frontend-disinformation-game/*.local
 frontend-disinformation-game/.env
+frotn
 
 # Backend ignores
 backend-disinformation-game/node_modules/
@@ -20,3 +21,8 @@ backend-disinformation-game/profile_pics/
 backend-disinformation-game/tweets.csv
 backend-disinformation-game/GCP_KEYS.json
 backend-disinformation-game/.firebaserc
+
+#Python ignores
+
+python-backend/GCP_KEYS.JSON
+python-backend/config.ini
