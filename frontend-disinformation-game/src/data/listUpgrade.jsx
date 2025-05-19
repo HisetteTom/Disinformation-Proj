@@ -53,6 +53,18 @@ const Upgrade = [
       ],
       price: [175, 350, 700],
       effect: (level) => ({ timeScoreBonus: level * 0.2 })
+    },
+    {
+      id: "second_chance",
+      name: "Seconde chance",
+      img: "/upgrades/heart.png",
+      desc: "DA ULTIMATE UPGRADE MATE",
+      maxLevel: 1,
+      levelDesc: [
+        "+1 sensation you won"
+      ],
+      price: [9999],
+      effect: (level) => ({ secondeChance: level * 1 })
     }
   ];
   

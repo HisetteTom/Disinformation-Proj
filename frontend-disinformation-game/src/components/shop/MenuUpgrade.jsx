@@ -118,7 +118,7 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
           {availableUpgrades.map((upgrade) => (
             <div key={upgrade.id} className={`rounded-lg border p-4 ${upgrade.canPurchase ? "cursor-pointer bg-white hover:bg-blue-50" : "bg-gray-100 opacity-70"}`}>
               <div className="flex items-start">
-                <div className="mr-4 flex h-16 w-16 items-center justify-center rounded-md bg-blue-100">{upgrade.img ? <img src={upgrade.img} className="h-10 w-10" /> : <div className="text-2xl text-blue-500">⚡</div>}</div>
+                <div className="mr-4 flex h-16 w-16 items-center justify-center rounded-md bg-blue-100">{upgrade.img ? <img src={`./img${upgrade.img}`} className="h-10 w-10" /> : <div className="text-2xl text-blue-500">⚡</div>}</div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold">{upgrade.name}</h3>
                   <div className="mb-1 flex items-center">
