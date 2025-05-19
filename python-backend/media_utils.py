@@ -1,8 +1,37 @@
-# filepath: c:\Users\Tom\Downloads\Disinformation-Proj\python-backend\media_utils.py
 import os
 import aiohttp
 from datetime import datetime
 import re
+
+async def download_profile_to_memory(session, profile_url):
+    """Download profile picture to memory instead of local file system"""
+    if not profile_url:
+        return None
+        
+    try:
+        async with session.get(profile_url) as response:
+            if response.status == 200:
+                # Return the binary content directly
+                return await response.read()
+    except Exception as e:
+        print(f"Error downloading profile picture: {e}")
+        
+    return None
+
+async def download_media_to_memory(session, media_url):
+    """Download media file to memory instead of local file system"""
+    if not media_url:
+        return None
+        
+    try:
+        async with session.get(media_url) as response:
+            if response.status == 200:
+                # Return the binary content directly
+                return await response.read()
+    except Exception as e:
+        print(f"Error downloading media: {e}")
+        
+    return None
 
 def ensure_dir_exists(directory):
     """Create directory if it doesn't exist."""

@@ -5,6 +5,8 @@ import pandas as pd
 from io import StringIO
 from datetime import datetime
 from google.cloud import storage, firestore
+import magic
+
 
 class GCPStorage:
     """Class to handle GCP storage operations with Firestore for tweet data."""
@@ -85,7 +87,7 @@ class GCPStorage:
             blob.upload_from_filename(local_path)
             
             # Set public URL for access
-            blob.make_public()
+            #blob.make_public()
             
             print(f"Uploaded profile picture for {username}")
             return blob.public_url
@@ -113,7 +115,7 @@ class GCPStorage:
             blob.upload_from_filename(local_path)
             
             # Set public URL for access
-            blob.make_public()
+            #blob.make_public()
             
             print(f"Uploaded media file for tweet {tweet_id}")
             return blob.public_url
@@ -195,3 +197,70 @@ class GCPStorage:
         except Exception as e:
             print(f"Error loading DataFrame from GCP: {e}")
             return None
+
+    def upload_profile_pic_from_memory(self, content_bytes, tweet_id, username):
+        """Upload profile picture from memory directly to GCP Storage."""
+        if not content_bytes:
+            return ""
+            
+        try:
+            # Determine content type from bytes (simplified)
+            content_type = magic.from_buffer(content_bytes, mime=True)
+            
+            # Determine extension from content type
+            extension_map = {
+                'image/jpeg': '.jpg',
+                'image/png': '.png', 
+                'image/gif': '.gif',
+                'image/webp': '.webp'
+            }
+            file_extension = extension_map.get(content_type, '.jpg')
+            
+            # Simple flat structure
+            file_name = f"profile_{username}{file_extension}"
+            blob_path = f"users/{username}/{file_name}"
+            
+            # Upload file from memory
+            bucket = self.storage_client.bucket(self.buckets['profiles'])
+            blob = bucket.blob(blob_path)
+            blob.upload_from_string(content_bytes, content_type=content_type)
+            
+            print(f"Uploaded profile picture for {username}")
+            return f"gs://{self.buckets['profiles']}/{blob_path}"
+        except Exception as e:
+            print(f"Error uploading profile pic from memory: {e}")
+            return ""
+
+    def upload_media_file_from_memory(self, content_bytes, tweet_id, index):
+        """Upload media file from memory directly to GCP Storage."""
+        if not content_bytes:
+            return ""
+            
+        try:
+            # Determine content type from bytes (simplified)
+            content_type = magic.from_buffer(content_bytes, mime=True)
+            
+            # Determine extension from content type
+            extension_map = {
+                'image/jpeg': '.jpg',
+                'image/png': '.png', 
+                'image/gif': '.gif',
+                'image/webp': '.webp',
+                'video/mp4': '.mp4'
+            }
+            file_extension = extension_map.get(content_type, '.jpg')
+            
+            # Use a simpler structure
+            file_name = f"tweet_{tweet_id}_media_{index}{file_extension}"
+            blob_path = f"media/{tweet_id}/{file_name}"
+            
+            # Upload file from memory
+            bucket = self.storage_client.bucket(self.buckets['images'])
+            blob = bucket.blob(blob_path)
+            blob.upload_from_string(content_bytes, content_type=content_type)
+            
+            print(f"Uploaded media file for tweet {tweet_id}")
+            return f"gs://{self.buckets['images']}/{blob_path}"
+        except Exception as e:
+            print(f"Error uploading media file from memory: {e}")
+            return ""

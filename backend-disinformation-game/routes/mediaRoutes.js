@@ -73,6 +73,113 @@ router.get('/:type', async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Special handling for profile pictures with gs:// path
+    if (type === 'profiles' && mediaPath.startsWith('gs://')) {
+      console.log('Handling GCP profile picture path:', mediaPath);
+      
+      try {
+        // Parse the gs:// URL properly
+        const gsPath = mediaPath.replace('gs://', '');
+        const [bucketName, ...objectPathParts] = gsPath.split('/');
+        const objectPath = objectPathParts.join('/');
+        
+        console.log(`Accessing bucket: ${bucketName}, path: ${objectPath}`);
+        
+        // Use the correct bucket from the gs:// URL
+        const bucket = storage.bucket(bucketName);
+        const file = bucket.file(objectPath);
+        
+        // Check if file exists
+        const [exists] = await file.exists();
+        if (!exists) {
+          console.log('Profile picture not found in GCP:', objectPath);
+          
+          // Try alternative paths for spaces in usernames
+          if (objectPath.includes(' ')) {
+            // Try replacing spaces with underscores
+            const altPath = objectPath.replace(/ /g, '_');
+            console.log('Trying alternative path with underscores:', altPath);
+            
+            const altFile = bucket.file(altPath);
+            const [altExists] = await altFile.exists();
+            
+            if (altExists) {
+              console.log('Found profile with underscores instead of spaces');
+              const [metadata] = await altFile.getMetadata();
+              if (metadata.contentType) {
+                res.setHeader('Content-Type', metadata.contentType);
+              }
+              
+              // Stream the file
+              altFile.createReadStream()
+                .on('error', (err) => {
+                  console.error('Error streaming alternate profile:', err);
+                  if (!res.headersSent) {
+                    res.status(500).send('Error accessing profile');
+                  }
+                })
+                .pipe(res);
+              return;
+            }
+            
+            // Try URL-encoded path
+            const encodedPath = encodeURIComponent(objectPath).replace(/%2F/g, '/');
+            if (encodedPath !== objectPath) {
+              console.log('Trying URL-encoded path:', encodedPath);
+              const encodedFile = bucket.file(encodedPath);
+              const [encodedExists] = await encodedFile.exists();
+              
+              if (encodedExists) {
+                console.log('Found profile with URL encoding');
+                const [metadata] = await encodedFile.getMetadata();
+                if (metadata.contentType) {
+                  res.setHeader('Content-Type', metadata.contentType);
+                }
+                
+                // Stream the file
+                encodedFile.createReadStream()
+                  .on('error', (err) => {
+                    console.error('Error streaming encoded profile:', err);
+                    if (!res.headersSent) {
+                      res.status(500).send('Error accessing profile');
+                    }
+                  })
+                  .pipe(res);
+                return;
+              }
+            }
+          }
+          
+          return res.status(404).send('Profile picture not found');
+        }
+        
+        // Set appropriate headers
+        const [metadata] = await file.getMetadata();
+        if (metadata.contentType) {
+          res.setHeader('Content-Type', metadata.contentType);
+        }
+        
+        // Stream the file
+        console.log('Streaming profile picture from GCP:', objectPath);
+        file.createReadStream()
+          .on('error', (err) => {
+            console.error('Error streaming profile picture:', err);
+            if (!res.headersSent) {
+              res.status(500).send('Error accessing profile picture');
+            }
+          })
+          .pipe(res);
+          
+      } catch (error) {
+        console.error('Error accessing profile picture:', error);
+        if (!res.headersSent) {
+          res.status(500).send('Server error: ' + error.message);
+        }
+      }
+      
+      return; // Important to exit after handling
+    }
     
     // For media files that match the structure in GCP
     if (mediaPath.startsWith('media/')) {
@@ -285,5 +392,286 @@ router.get('/:type', async (req, res) => {
     }
   }
 });
+
+// Add this new route specifically for profiles with special characters
+router.get('/profile-direct', async (req, res) => {
+  try {
+    // Set CORS headers - this is essential for browser to accept the response
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    const { bucket: bucketName, path: objectPath } = req.query;
+    
+    if (!bucketName || !objectPath) {
+      return res.status(400).send('Missing bucket name or object path');
+    }
+    
+    console.log(`Profile direct access: bucket=${bucketName}, path=${decodeURIComponent(objectPath)}`);
+    
+    // Ensure storage is initialized
+    if (!storage) {
+      return res.status(500).send('Storage not initialized');
+    }
+    
+    // Handle special characters in the path by decoding first
+    const decodedPath = decodeURIComponent(objectPath);
+    
+    // Get the file from GCP
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(decodedPath);
+    
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      console.log('Profile not found, trying alternatives');
+      
+      // Try alternatives for special characters
+      const alternativePaths = [
+        // Replace hashtags with encoded value
+        decodedPath.replace(/#/g, '%23'),
+        // Replace special chars with underscores
+        decodedPath.replace(/[#\s-]/g, '_'),
+        // Remove special characters
+        decodedPath.replace(/[^\w\/\.]/g, '')
+      ];
+      
+      for (const altPath of alternativePaths) {
+        console.log(`Trying alternative path: ${altPath}`);
+        const altFile = bucket.file(altPath);
+        const [altExists] = await altFile.exists();
+        
+        if (altExists) {
+          console.log(`Found profile at alternative path: ${altPath}`);
+          
+          // Set appropriate headers with proper caching
+          const [metadata] = await altFile.getMetadata();
+          if (metadata.contentType) {
+            res.setHeader('Content-Type', metadata.contentType);
+          }
+          res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+          
+          return altFile.createReadStream().pipe(res);
+        }
+      }
+      
+      return res.status(404).send('Profile picture not found');
+    }
+    
+    // Set metadata and cache headers
+    const [metadata] = await file.getMetadata();
+    if (metadata.contentType) {
+      res.setHeader('Content-Type', metadata.contentType);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+    
+    // Stream the file directly
+    console.log('Streaming profile directly from GCP:', decodedPath);
+    file.createReadStream().pipe(res);
+    
+  } catch (error) {
+    console.error('Error accessing direct profile:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Server error: ' + error.message);
+    }
+  }
+});
+
+// Add a new crossorigin-friendly route
+router.get('/crossorigin-profile', async (req, res) => {
+  try {
+    // These headers are essential to prevent CORS issues
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    
+    const { bucket: bucketName, path: objectPath } = req.query;
+    
+    if (!bucketName || !objectPath) {
+      return res.status(400).send('Missing bucket or path parameter');
+    }
+    
+    console.log(`CrossOrigin profile request: ${bucketName}/${objectPath}`);
+    
+    // Decode and clean the path
+    const decodedPath = decodeURIComponent(objectPath);
+    
+    // Get the file from GCP
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(decodedPath);
+    
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      // Try alternatives for special characters
+      const alternativePaths = [
+        // Original path but URL-encoded special chars
+        decodedPath.replace(/#/g, '%23').replace(/🌍/g, encodeURIComponent('🌍')),
+        // Replace special chars with underscores
+        decodedPath.replace(/[#\s\-🌍]/g, '_')
+      ];
+      
+      for (const altPath of alternativePaths) {
+        console.log(`Trying alternative path: ${altPath}`);
+        const altFile = bucket.file(altPath);
+        const [altExists] = await altFile.exists();
+        
+        if (altExists) {
+          console.log(`Found profile at alternative path: ${altPath}`);
+          
+          // Set content type
+          const [metadata] = await altFile.getMetadata();
+          if (metadata.contentType) {
+            res.setHeader('Content-Type', metadata.contentType);
+          }
+          
+          // Add cache headers
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          
+          // Stream the file
+          return altFile.createReadStream().pipe(res);
+        }
+      }
+      
+      return res.status(404).send('Profile image not found');
+    }
+    
+    // Set headers for the original file
+    const [metadata] = await file.getMetadata();
+    if (metadata.contentType) {
+      res.setHeader('Content-Type', metadata.contentType);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    
+    // Stream file
+    file.createReadStream().pipe(res);
+    
+  } catch (error) {
+    console.error('Error in crossorigin profile route:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Server error');
+    }
+  }
+});
+
+router.get('/profiles/direct', async (req, res) => {
+  try {
+    // Set proper headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    
+    const { bucket: bucketName, path: encodedPath } = req.query;
+    
+    if (!bucketName || !encodedPath) {
+      return res.status(400).send('Missing parameters');
+    }
+    
+    // Decode the path properly
+    const objectPath = decodeURIComponent(encodedPath);
+    
+    console.log(`Simple profile access: ${bucketName}/${objectPath}`);
+    
+    // Handle special characters like # and emojis
+    // Use the Storage API to get a signed URL instead of streaming directly
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(objectPath);
+    
+    // Check if file exists
+    const [exists] = await file.exists();
+    if (!exists) {
+      console.log('File not found, trying alternatives');
+      
+      // Alternative paths to try
+      const alternatives = [
+        objectPath.replace(/#/g, '_'),
+        objectPath.replace(/[^\w\/\.]/g, '_')
+      ];
+      
+      let found = false;
+      
+      for (const alt of alternatives) {
+        console.log(`Trying alternative: ${alt}`);
+        const altFile = bucket.file(alt);
+        const [altExists] = await altFile.exists();
+        
+        if (altExists) {
+          console.log('Found file with alternative path');
+          
+          // Get metadata
+          const [metadata] = await altFile.getMetadata();
+          if (metadata.contentType) {
+            res.setHeader('Content-Type', metadata.contentType);
+          }
+          
+          // Stream file
+          return altFile.createReadStream().pipe(res);
+        }
+      }
+      
+      // If we get here, we couldn't find any alternative
+      return res.status(404).send('Profile not found');
+    }
+    
+    // Get metadata for the original file
+    const [metadata] = await file.getMetadata();
+    if (metadata.contentType) {
+      res.setHeader('Content-Type', metadata.contentType);
+    }
+    
+    // Stream the file
+    file.createReadStream().pipe(res);
+    
+  } catch (error) {
+    console.error('Error in profile direct endpoint:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Server error');
+    }
+  }
+});
+
+// Also add a simple endpoint for basic profile paths
+router.get('/profiles/simple', async (req, res) => {
+  try {
+    const { path: profilePath } = req.query;
+    if (!profilePath) {
+      return res.status(400).send('Missing path');
+    }
+    
+    // Set headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    
+    // Try to serve from profiles bucket
+    const bucket = storage.bucket('disinformation-game-profiles');
+    const file = bucket.file(`users/${profilePath}`);
+    
+    const [exists] = await file.exists();
+    if (exists) {
+      const [metadata] = await file.getMetadata();
+      if (metadata.contentType) {
+        res.setHeader('Content-Type', metadata.contentType);
+      }
+      return file.createReadStream().pipe(res);
+    }
+    
+    // Not found
+    res.status(404).send('Profile not found');
+    
+  } catch (error) {
+    console.error('Error in simple profile endpoint:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Server error');
+    }
+  }
+});
+
 
 module.exports = router;

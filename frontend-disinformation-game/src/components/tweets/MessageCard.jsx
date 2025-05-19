@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 function formatTweetContent(content) {
   if (!content) return "";
 
-  // remove les t.co URLs
+  // Remove t.co URLs
   const urlRegex = /https?:\/\/t\.co\/\w+/g;
   return content.replace(urlRegex, "");
 }
@@ -24,45 +24,93 @@ const extractTweetId = (path) => {
   return null;
 };
 
+// New improved getProfilePicSrc function
+// New improved getProfilePicSrc function
+const getProfilePicSrc = (profilePic) => {
+  if (!profilePic) return null;
+
+  // Normalize to forward slashes
+  profilePic = normalizePath(profilePic);
+
+  // For GCP paths with gs:// prefix
+  if (profilePic.startsWith("gs://")) {
+    // Convert gs:// URL to direct GCP URL - this works once CORS is properly set
+    const gsPath = profilePic.replace("gs://", "");
+    const [bucketName, ...pathParts] = gsPath.split("/");
+    const pathString = pathParts.join("/");
+    
+    // Use direct approach via Vite proxy instead of CORS
+    // Route through Vite's proxy to avoid CORS issues
+    return `/api/media/profiles/direct?bucket=${bucketName}&path=${encodeURIComponent(pathString)}`;
+  }
+
+  // Handle other cases
+  if (profilePic.startsWith("http")) {
+    return profilePic;
+  } else if (profilePic.includes("profile_pics")) {
+    const parts = profilePic.split("profile_pics/");
+    if (parts.length > 1) {
+      return `/api/media/profiles/simple?path=${encodeURIComponent(parts[1])}`;
+    }
+  }
+
+  // Basic path
+  return `/api/media/profiles/simple?path=${encodeURIComponent(profilePic)}`;
+};
+
+// New improved getMediaSrc function
 const getMediaSrc = (media) => {
   if (!media) return null;
 
   // Normalize to forward slashes
   media = normalizePath(media);
 
-  // Extract tweet ID from filename (this is key for your structure)
-  const tweetIdMatch = media.match(/tweet_(\d+)_media/);
-  const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
+  // For GCP storage paths, use direct-gcp endpoint
+  if (media.startsWith("gs://")) {
+    const gsPath = media.replace("gs://", "");
+    const [bucketName, ...pathParts] = gsPath.split("/");
+    const objectPath = pathParts.join("/");
 
-  // Get just the filename
-  const fileName = media.split("/").pop();
-
-  // If we have a tweet ID and filename, use the confirmed working structure
-  if (tweetId && fileName) {
-    return `/api/media/images?path=media/${tweetId}/${fileName}`;
+    // Direct GCP access is more reliable
+    return `http://localhost:3001/api/media/direct-gcp?bucket=${bucketName}&path=${encodeURIComponent(objectPath)}`;
   }
 
-  // If it's a full URL, use it directly
+  // Extract tweet ID if present in the media path
+  const tweetId = extractTweetId(media);
+
+  // Handle different media path formats
   if (media.startsWith("http")) {
     return media;
+  } else if (tweetId) {
+    // If we have a tweet ID, use the proper GCP path structure
+    const mediaName = media.split("/").pop();
+    return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${tweetId}/${mediaName}`)}`;
+  } else if (media.includes("downloaded_images")) {
+    // Handle Windows path format for downloaded_images
+    const parts = media.split("downloaded_images/");
+    if (parts.length > 1) {
+      const nestedPath = parts[1];
+      // Use the exact path structure you confirmed works in GCP
+      const tweetMatch = nestedPath.match(/.*?(tweet_\d+_media_\d+\.jpg)$/i);
+      if (tweetMatch && tweetMatch[1]) {
+        // Extract the tweet ID from the filename
+        const idMatch = tweetMatch[1].match(/tweet_(\d+)_media/);
+        if (idMatch && idMatch[1]) {
+          return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${idMatch[1]}/${tweetMatch[1]}`)}`;
+        }
+      }
+      // Fallback to just the path
+      return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${nestedPath}`)}`;
+    }
   }
 
-  // For GCP storage paths
-  if (media.startsWith("gs://")) {
-    return `/api/media/images?path=${encodeURIComponent(media)}`;
-  }
-
-  // Last resort - try to extract the filename if it has the tweet_ pattern
-  if (media.includes("tweet_") && fileName) {
-    return `/api/debug/test-stream-image?path=${encodeURIComponent(fileName)}`;
-  }
-
-  // Fallback to just the media path
-  return `/api/media/images?path=${encodeURIComponent(media)}`;
+  // Basic path - with media/ prefix since that's the structure in GCP
+  return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${media}`)}`;
 };
 
 function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable, onClose }) {
   const [mediaLoaded, setMediaLoaded] = useState({});
+  const [mediaErrors, setMediaErrors] = useState({});
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   const mediaFiles = message.mediaFiles || [];
@@ -79,103 +127,80 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
   // Media placeholder - using data URI to avoid network requests
   const mediaPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Cpath d='M65,45 L65,40 L60,40 L60,35 L40,35 L40,40 L35,40 L35,45 L30,45 L30,65 L70,65 L70,45 L65,45 Z M45,40 L55,40 L55,45 L45,45 L45,40 Z M65,60 L35,60 L35,50 L40,50 L40,55 L60,55 L60,50 L65,50 L65,60 Z' fill='%23d1d5db'/%3E%3C/svg%3E";
 
-  const getProfilePicSrc = (profilePic) => {
-    if (!profilePic) return null;
-
-    // Normalize to forward slashes
-    profilePic = normalizePath(profilePic);
-
-    // Check for different profile path formats
-    if (profilePic.startsWith("http")) {
-      return profilePic;
-    } else if (profilePic.startsWith("gs://")) {
-      return `/api/media/profiles?path=${encodeURIComponent(profilePic)}`;
-    } else if (profilePic.includes("profile_pics")) {
-      // Handle paths containing profile_pics folder
-      const parts = profilePic.split("profile_pics/");
-      if (parts.length > 1) {
-        return `/api/media/profiles?path=${encodeURIComponent(parts[1])}`;
-      }
-    } else if (profilePic.includes("/")) {
-      // If it has slashes but isn't a full path, try with users/ prefix
-      const withPrefix = `/api/media/profiles?path=users/${encodeURIComponent(profilePic)}`;
-      return withPrefix;
-    }
-
-    // Basic path - just encode it
-    return `/api/media/profiles?path=${encodeURIComponent(profilePic)}`;
-  };
-
-  const getMediaSrc = (media) => {
-    if (!media) return null;
-
-    // Normalize to forward slashes
-    media = normalizePath(media);
-
-    // Extract tweet ID if present in the media path
-    const tweetId = extractTweetId(media);
-
-    // Handle different media path formats
-    if (media.startsWith("http")) {
-      return media;
-    } else if (media.startsWith("gs://")) {
-      return `/api/media/images?path=${encodeURIComponent(media)}`;
-    } else if (tweetId) {
-      // If we have a tweet ID, use the proper GCP path structure
-      const mediaName = media.split("/").pop();
-      return `/api/media/images?path=media/${tweetId}/${encodeURIComponent(mediaName)}`;
-    } else if (media.includes("downloaded_images")) {
-      // Handle Windows path format for downloaded_images
-      const parts = media.split("downloaded_images/");
-      if (parts.length > 1) {
-        const nestedPath = parts[1];
-        // Use the exact path structure you confirmed works in GCP
-        const tweetMatch = nestedPath.match(/.*?(tweet_\d+_media_\d+\.jpg)$/i);
-        if (tweetMatch && tweetMatch[1]) {
-          // Extract the tweet ID from the filename
-          const idMatch = tweetMatch[1].match(/tweet_(\d+)_media/);
-          if (idMatch && idMatch[1]) {
-            return `/api/media/images?path=media/${idMatch[1]}/${encodeURIComponent(tweetMatch[1])}`;
-          }
-        }
-        // Fallback to just the path
-        return `/api/media/images?path=media/${encodeURIComponent(nestedPath)}`;
-      }
-    }
-
-    // Basic path - with media/ prefix since that's the structure in GCP
-    return `/api/media/images?path=media/${encodeURIComponent(media)}`;
-  };
-
   const renderProfilePicture = () => {
     if (!message.profilePic) return <div dangerouslySetInnerHTML={{ __html: defaultAvatar }} />;
 
     const profileSrc = getProfilePicSrc(message.profilePic);
 
     return (
-      <img
-        src={profileSrc}
-        alt={`@${message.author} profile`}
-        className="h-8 w-8 rounded-full object-cover"
-        onLoad={() => setProfileLoaded(true)}
-        onError={(e) => {
-          e.target.onerror = null; // Prevent error loop
-          if (e.target.parentNode) {
-            try {
-              // Replace with the SVG
-              const container = e.target.parentNode;
-              if (container) {
-                container.innerHTML = "";
-                const svgElement = document.createElement("div");
-                svgElement.innerHTML = defaultAvatar;
-                container.appendChild(svgElement.firstChild);
-              }
-            } catch (err) {
-              console.error("Error replacing profile image with SVG:", err);
+      <div className="relative h-8 w-8 overflow-hidden rounded-full">
+        {!profileLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div dangerouslySetInnerHTML={{ __html: defaultAvatar }} />
+          </div>
+        )}
+        <img
+          src={profileSrc}
+          alt={`@${message.author} profile`}
+          className={`h-full w-full object-cover ${profileLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setProfileLoaded(true)}
+          onError={(e) => {
+            console.log("Profile image failed to load:", profileSrc);
+            e.target.style.display = "none";
+            // Keep the default avatar visible
+          }}
+        />
+      </div>
+    );
+  };
+
+  const renderMediaItem = (media, index) => {
+    // Get the optimized source URL
+    const imgSrc = getMediaSrc(media);
+    const hasError = mediaErrors[index];
+    const isLoaded = mediaLoaded[index];
+
+    return (
+      <div key={index} className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-gray-100">
+        {!isLoaded && !hasError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+          </div>
+        )}
+
+        {hasError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img src={mediaPlaceholder} alt="Media placeholder" className="h-full w-full object-contain" />
+          </div>
+        )}
+
+        <img
+          src={imgSrc}
+          alt={`Media ${index}`}
+          className={`h-full w-full object-cover ${isLoaded && !hasError ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => {
+            setMediaLoaded((prev) => ({ ...prev, [index]: true }));
+          }}
+          onError={(e) => {
+            console.log(`Media ${index} failed to load: ${imgSrc}`);
+
+            // Attempt to try a backup URL for GS URLs
+            if (imgSrc.includes("direct-gcp") && !mediaErrors[index]) {
+              // Try the old approach as a fallback
+              const backupSrc = `/api/media/images?path=${encodeURIComponent(media)}`;
+              console.log(`Trying backup source: ${backupSrc}`);
+              e.target.src = backupSrc;
+
+              // Mark this as having one error already
+              setMediaErrors((prev) => ({ ...prev, [index]: "attempt1" }));
+            } else {
+              // If we've already tried a backup or this isn't a GCP URL, mark as error
+              setMediaErrors((prev) => ({ ...prev, [index]: "failed" }));
+              e.target.style.display = "none";
             }
-          }
-        }}
-      />
+          }}
+        />
+      </div>
     );
   };
 
@@ -183,7 +208,7 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
     <div className={`rounded-lg border border-gray-300 bg-white p-4 shadow-sm ${clickable ? "cursor-pointer hover:bg-gray-50" : ""}`}>
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center">
-          <div className="mr-2 h-8 w-8 overflow-hidden rounded-full">{renderProfilePicture()}</div>
+          <div className="mr-2">{renderProfilePicture()}</div>
           <span className="font-bold text-gray-800">@{message.author}</span>
         </div>
         <span className="text-sm text-gray-500">{message.timestamp instanceof Date && !isNaN(message.timestamp) ? message.timestamp.toLocaleString() : "Unknown date"}</span>
@@ -192,87 +217,7 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
       <div className="mb-4 py-2 text-gray-800" dangerouslySetInnerHTML={{ __html: formatTweetContent(message.content) }} />
 
       {/* Display media files if available */}
-      {mediaFilesArray.length > 0 && (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {mediaFilesArray.map((media, index) => {
-            // Get the initial source URL
-            const imgSrc = getMediaSrc(media);
-
-            return (
-              <div key={index} className="flex aspect-square items-center justify-center overflow-hidden rounded-md bg-gray-100">
-                <img
-                  src={imgSrc}
-                  alt={`Media ${index}`}
-                  className="h-full w-full object-cover"
-                  data-attempts="0"
-                  onLoad={() => {
-                    setMediaLoaded((prev) => ({ ...prev, [index]: true }));
-                  }}
-                  // Update the onError handler to avoid direct GCP URLs:
-
-                  onError={(e) => {
-                    // Track attempts to prevent infinite loops
-                    const attempts = parseInt(e.target.dataset.attempts || "0") + 1;
-                    e.target.dataset.attempts = attempts.toString();
-
-                    console.log(`Media ${index} failed to load (attempt ${attempts}): ${imgSrc}`);
-
-                    // Only try alternate approaches if we haven't tried too many times
-                    if (attempts < 3) {
-                      try {
-                        // Always normalize the media path first
-                        const normalizedMedia = normalizePath(media);
-
-                        // Extract just the filename (without any directory parts)
-                        const fileName = normalizedMedia.split("/").pop();
-
-                        // Make sure there are no backslashes in the filename
-                        const cleanFileName = fileName.replace(/\\/g, "");
-
-                        // Try to extract tweet ID from filename
-                        const tweetIdMatch = cleanFileName.match(/tweet_(\d+)_media/);
-                        const tweetId = tweetIdMatch ? tweetIdMatch[1] : null;
-
-                        let altSrc;
-
-                        if (attempts === 1) {
-                          // First attempt: Direct tweet ID + filename approach
-                          if (tweetId) {
-                            altSrc = `/api/media/images?path=media/${tweetId}/${encodeURIComponent(cleanFileName)}`;
-                          } else {
-                            // Try just the filename if no tweet ID
-                            altSrc = `/api/media/images?path=${encodeURIComponent(cleanFileName)}`;
-                          }
-                        } else {
-                          // Second attempt: Directly use test-stream-image endpoint which works
-                          if (tweetId) {
-                            altSrc = `/api/debug/test-stream-image?path=media/${tweetId}/${encodeURIComponent(cleanFileName)}`;
-                          } else {
-                            altSrc = `/api/debug/test-stream-image?path=${encodeURIComponent(cleanFileName)}`;
-                          }
-                        }
-
-                        console.log(`Trying alternate source: ${altSrc}`);
-                        e.target.onerror = null;
-                        e.target.src = altSrc;
-                      } catch (err) {
-                        console.error("Error creating alternate URL:", err);
-                        e.target.onerror = null;
-                        e.target.src = mediaPlaceholder;
-                      }
-                    } else {
-                      // Too many attempts, use placeholder
-                      console.log("Using placeholder after multiple failed attempts");
-                      e.target.onerror = null;
-                      e.target.src = mediaPlaceholder;
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {mediaFilesArray.length > 0 && <div className="mt-2 grid grid-cols-2 gap-2">{mediaFilesArray.map((media, index) => renderMediaItem(media, index))}</div>}
 
       <div className="mb-4 flex gap-4 text-sm text-gray-600">
         <span>❤️ {message.likes || 0}</span>

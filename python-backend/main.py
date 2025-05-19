@@ -1,23 +1,30 @@
 from twikit import Client, TooManyRequests
 from datetime import datetime
-import csv
-from configparser import ConfigParser
 import asyncio
-import os
 import aiohttp
-import pandas as pd
-import json
-
+import re
+from configparser import ConfigParser
+from config import QUERY, MINIMUM_TWEETS
 # Import from our modules
-from config import MINIMUM_TWEETS
 from text_utils import extract_links, print_tweet_structure
 from tweet_api import get_tweets
-from media_utils import download_profile_picture, download_media_content
+from media_utils import download_media_to_memory, download_profile_to_memory
 from gcp_utils import GCPStorage
+
+
+def extract_query_hashtag(query_string):
+    """Extract the main hashtag from the query string in config.py."""
+    import re
+    # Look for hashtag pattern in the query
+    hashtag_match = re.search(r'#(\w+)', query_string)
+    if hashtag_match:
+        return hashtag_match.group(1).lower()  # Return without the # symbol
+    return ""
+
 
 # Define a main async function to wrap the core logic
 async def main():
-    #* login credentials
+    # Login credentials
     config = ConfigParser()
     config.read('config.ini')
     username = config['X']['username']
@@ -25,6 +32,10 @@ async def main():
     password = config['X']['password']
 
     print(f'{datetime.now()} - Account details : {username} {email} {password}')
+    
+    # Extract the main hashtag from the QUERY in config.py
+    main_hashtag = extract_query_hashtag(QUERY)
+    print(f'{datetime.now()} - Using main hashtag from config: #{main_hashtag}')
 
     # Initialize GCP storage
     print(f'{datetime.now()} - Initializing GCP Storage...')
@@ -33,65 +44,33 @@ async def main():
         print(f'{datetime.now()} - GCP Storage initialized successfully')
     except Exception as e:
         print(f'{datetime.now()} - Error initializing GCP Storage: {e}')
-        print(f'{datetime.now()} - Falling back to CSV storage')
-        gcp = None
+        print(f'{datetime.now()} - Cannot continue without cloud storage')
+        return
 
-    #* ask for CSV/JSON filename
-    filename_base = input("Enter the base filename to use (e.g., tweets): ")
-    if not filename_base:
-        filename_base = 'tweets'
-        
-    # For CSV compatibility (still keeping a CSV version as backup)
-    csv_filename = f"{filename_base}.csv"
-    
-    #* check if file exists to determine if headers should be written
-    file_exists = os.path.isfile(csv_filename)
-    
-    # Initialize tweet_count
+    # Get latest tweet count from Firestore
     tweet_count = 0
-    
-    # If using GCP, try to get the most recent tweet count from there
-    if gcp:
-        try:
-            df = gcp.load_tweets_dataframe(csv_filename)
-            if df is not None and not df.empty and 'Tweet_count' in df.columns:
-                last_tweet_count = df['Tweet_count'].max()
-                tweet_count = int(last_tweet_count)
-                print(f'{datetime.now()} - Found existing data in GCP with {len(df)} tweets. Will continue from Tweet_count: {tweet_count}')
-        except Exception as e:
-            print(f'{datetime.now()} - Error reading from GCP: {e}. Checking local file.')
-    
-    # If GCP didn't work or isn't being used, check local file
-    if tweet_count == 0 and file_exists:
-        try:
-            # Try to read the last row to get the most recent Tweet_count
-            df = pd.read_csv(csv_filename)
-            if not df.empty and 'Tweet_count' in df.columns:
-                last_tweet_count = df['Tweet_count'].max()
-                tweet_count = int(last_tweet_count)
-                print(f'{datetime.now()} - Found existing CSV with {len(df)} tweets. Will continue from Tweet_count: {tweet_count}')
-        except Exception as e:
-            print(f'{datetime.now()} - Error reading existing CSV: {e}. Starting count from 0.')
-    
-    # If file doesn't exist, create it with headers
-    if not file_exists:
-        with open(csv_filename, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Tweet_count', 'Username', 'Text', 'Created_At', 'Retweets', 'Likes', 
-                            'Tweet_ID', 'Profile_Pic', 'Media_Files', 'T_co_Links', 'is_disinfo'])
+    try:
+        # Query Firestore for the highest Tweet_count value
+        tweets_ref = gcp.db.collection('tweets')
+        query = tweets_ref.order_by('Tweet_count', direction='DESCENDING').limit(1)
+        results = query.stream()
+        
+        for doc in results:
+            tweet_data = doc.to_dict()
+            if 'Tweet_count' in tweet_data:
+                tweet_count = int(tweet_data['Tweet_count'])
+                print(f'{datetime.now()} - Found existing data in Firestore. Will continue from Tweet_count: {tweet_count}')
+                break
+    except Exception as e:
+        print(f'{datetime.now()} - Error reading from Firestore: {e}. Starting from 0.')
 
-    #* authenticate to X.com
+    # Authenticate to X.com
     client = Client(language='en-US')
 
     # Use await for async methods
     print(f'{datetime.now()} - Logging in...')
     await client.login(auth_info_1=username, auth_info_2=email, password=password)
     print(f'{datetime.now()} - Logged in successfully')
-
-    # Initialize pandas DataFrame for storing tweets
-    columns = ['Tweet_count', 'Username', 'Text', 'Created_At', 'Retweets', 'Likes', 
-              'Tweet_ID', 'Profile_Pic', 'Media_Files', 'T_co_Links', 'is_disinfo']
-    all_tweets_df = pd.DataFrame(columns=columns)
 
     # Create a session for downloading images
     async with aiohttp.ClientSession() as session:
@@ -137,60 +116,81 @@ async def main():
                 t_co_links = extract_links(tweet_text)
                 t_co_links_str = '|'.join(t_co_links) if t_co_links else ''
                 print(f"Found t.co links: {t_co_links_str}")
-
-                # Download profile picture (local download first)
-                profile_pic_path = await download_profile_picture(session, tweet, user_name, tweet_id)
-
-                # Download media content (local download first)
-                media_paths = await download_media_content(session, tweet, tweet_id)
-                media_paths_str = '|'.join(media_paths) if media_paths else ''
                 
-                # If using GCP, upload files to cloud and update paths
-                if gcp:
-                    # Upload profile picture to GCP if it exists
-                    if profile_pic_path:
-                        cloud_profile_path = gcp.upload_profile_pic(profile_pic_path, tweet_id, user_name)
-                        profile_pic_path = cloud_profile_path
+                # Use the main hashtag from config.py
+                hashtags_str = main_hashtag
+                print(f"Using hashtag from config: #{hashtags_str}")
+
+                # Download and directly upload profile picture to GCP
+                profile_pic_path = ""
+                if hasattr(tweet.user, 'profile_image_url'):  # FIXED: use profile_image_url
+                    profile_pic_url = tweet.user.profile_image_url
+                    # Get original size by removing _normal
+                    profile_pic_url = profile_pic_url.replace('_normal', '') if profile_pic_url else None
+                    print(f"Found profile image URL: {profile_pic_url}")
                     
-                    # Upload each media file to GCP if they exist
-                    if media_paths:
-                        cloud_media_paths = []
-                        for i, path in enumerate(media_paths):
-                            cloud_path = gcp.upload_media_file(path, tweet_id, i)
-                            cloud_media_paths.append(cloud_path)
-                        media_paths_str = '|'.join(cloud_media_paths)
-                    
-                    # Store complete tweet as JSON in organized folder structure
-                    tweet_json = {
-                        'Tweet_count': tweet_count,
-                        'Username': user_name,
-                        'Text': tweet_text,
-                        'Created_At': str(created_at),
-                        'Retweets': retweet_count,
-                        'Likes': favorite_count,
-                        'Tweet_ID': tweet_id,
-                        'Profile_Pic': profile_pic_path,
-                        'Media_Files': media_paths_str,
-                        'T_co_Links': t_co_links_str,
-                        'is_disinfo': ''
-                    }
+                    if profile_pic_url:
+                        try:
+                            # Download to memory then upload directly to GCP
+                            profile_data = await download_profile_to_memory(session, profile_pic_url)
+                            if profile_data:
+                                # Upload directly to GCP from memory
+                                profile_pic_path = gcp.upload_profile_pic_from_memory(profile_data, tweet_id, user_name)
+                                print(f"{datetime.now()} - Uploaded profile picture to GCP")
+                        except Exception as e:
+                            print(f"{datetime.now()} - Error handling profile picture: {e}")
+
+                # Download and directly upload media content to GCP
+                media_paths = []
+                media_paths_str = ""
+                
+                if hasattr(tweet, 'media') and tweet.media:
+                    for i, media_item in enumerate(tweet.media):
+                        try:
+                            # Get media URL - FIXED: use media_url
+                            media_url = None
+                            if hasattr(media_item, 'media_url'):
+                                media_url = media_item.media_url
+                                print(f"Found media URL: {media_url}")
+                            
+                            if not media_url:
+                                continue
+                                
+                            # Download to memory then upload directly to GCP
+                            media_data = await download_media_to_memory(session, media_url)
+                            if media_data:
+                                # Upload directly to GCP from memory
+                                cloud_path = gcp.upload_media_file_from_memory(media_data, tweet_id, i)
+                                media_paths.append(cloud_path)
+                                print(f"{datetime.now()} - Uploaded media {i} to GCP")
+                        except Exception as e:
+                            print(f"{datetime.now()} - Error handling media {i}: {e}")
+                
+                if media_paths:
+                    media_paths_str = '|'.join(media_paths)
+                
+                # Store tweet in Firestore
+                tweet_json = {
+                    'Tweet_count': tweet_count,
+                    'Username': user_name,
+                    'Text': tweet_text,
+                    'Created_At': str(created_at),
+                    'Retweets': retweet_count,
+                    'Likes': favorite_count,
+                    'Tweet_ID': tweet_id,
+                    'Profile_Pic': profile_pic_path,
+                    'Media_Files': media_paths_str,
+                    'T_co_Links': t_co_links_str,
+                    'Hashtags': hashtags_str,
+                    'is_disinfo': ''
+                }
+                
+                # Save directly to Firestore
+                try:
                     gcp.save_tweet_json(tweet_json, str(tweet_id))
-
-                # Create tuple for CSV and DataFrame
-                tweet_data = [
-                    tweet_count, user_name, tweet_text, created_at,
-                    retweet_count, favorite_count, tweet_id,
-                    profile_pic_path, media_paths_str, t_co_links_str,
-                    ''  # Empty is_disinfo column
-                ]
-
-                # Add to DataFrame
-                all_tweets_df.loc[len(all_tweets_df)] = tweet_data
-
-                # Write to local CSV as backup
-                with open(csv_filename, 'a', newline='', encoding='utf-8') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(tweet_data)
+                    print(f"{datetime.now()} - Saved tweet {tweet_id} to Firestore")
+                except Exception as e:
+                    print(f"{datetime.now()} - Error saving tweet to Firestore: {e}")
 
                 if tweet_count >= target_count:
                     break
@@ -199,16 +199,9 @@ async def main():
             if tweet_count >= target_count:
                 break
 
-        # Upload final DataFrame to GCP
-        if gcp:
-            try:
-                gcp.save_tweets_dataframe(all_tweets_df, csv_filename)
-                print(f'{datetime.now()} - Successfully uploaded complete DataFrame to GCP')
-            except Exception as e:
-                print(f'{datetime.now()} - Error uploading DataFrame to GCP: {e}')
+        new_tweets_added = tweet_count - (tweet_count - MINIMUM_TWEETS) if tweet_count >= target_count else tweet_count
+        print(f'{datetime.now()} - Done! Added {new_tweets_added} new tweets. Total tweets: {tweet_count}')
 
-        new_tweets_added = target_count - (tweet_count - MINIMUM_TWEETS) if tweet_count >= target_count else tweet_count
-        print(f'{datetime.now()} - Done! Added {new_tweets_added} new tweets. Total tweets in file: {tweet_count}')
 
 # Run the main async function
 if __name__ == "__main__":

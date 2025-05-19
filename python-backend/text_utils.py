@@ -6,6 +6,19 @@ def extract_links(text):
     pattern = r'https?://t\.co/\w+'
     return re.findall(pattern, text)
 
+def extract_hashtags(text):
+    """Extract hashtags from tweet text"""
+    if not text:
+        return []
+        
+    # Regular expression to find hashtags
+    hashtag_pattern = r'#(\w+)'
+    hashtags = re.findall(hashtag_pattern, text)
+    
+    # Convert to lowercase for better matching
+    return [tag.lower() for tag in hashtags]
+
+
 # Function to print tweet structure for debugging
 def print_tweet_structure(tweet, level=0, max_level=3):
     """Print tweet object structure for debugging"""

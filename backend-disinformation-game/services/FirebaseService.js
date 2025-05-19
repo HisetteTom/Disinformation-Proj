@@ -4,6 +4,7 @@ const { getFirestore } = require('firebase/firestore');
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
+const { Storage } = require('@google-cloud/storage');
 require('dotenv').config();
 
 const firebaseConfig = {
