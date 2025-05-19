@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
+    // Get anonymous tweets (no user filtering)
     const tweets = await getTweets();
     res.json(tweets);
   } catch (error) {

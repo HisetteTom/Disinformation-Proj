@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { evaluateTweetContent } from "../managers/TweetFeedManager";
-import { updateUserStats } from "../services/authService";
+import { updateUserStats, saveCorrectlyAnsweredTweets } from "../services/authService";
 import { TIME_SCORE_INTERVAL, TIME_SCORE_AMOUNT } from "../managers/GameStateManager";
 import { checkFact } from "../services/factCheckApi"; // Add this import
 
@@ -11,27 +11,36 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
     missedMisinformation: 0,
     speedBonus: 0,
   });
-  
+
   // Add a state to track all tweets that appeared during the game with timestamps
   const [allGameTweets, setAllGameTweets] = useState([]);
+  const [correctlyAnsweredTweets, setCorrectlyAnsweredTweets] = useState([]);
 
-  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score, gameStarted, timeScoreTimerRef, setTimeScore } = gameState;
+  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, 
+         messagesHandled, setMessagesHandled, feedSpeed, gameOver, score, gameStarted, timeScoreTimerRef, setTimeScore } = gameState;
+
+  const user = gameState.user || window.currentUser;
+
+
 
   // Track all tweets that appear in the feed during gameplay WITH TIMESTAMPS
   useEffect(() => {
     if (gameStarted && !gameOver) {
       // Add any new tweets to our tracking array with a timestamp
-      messageFeed.forEach(tweet => {
-        if (!allGameTweets.some(t => t.id === tweet.id)) {
-          setAllGameTweets(prev => [...prev, {
-            ...tweet,
-            appearedAt: Date.now() // Track when tweet appeared
-          }]);
+      messageFeed.forEach((tweet) => {
+        if (!allGameTweets.some((t) => t.id === tweet.id)) {
+          setAllGameTweets((prev) => [
+            ...prev,
+            {
+              ...tweet,
+              appearedAt: Date.now(), // Track when tweet appeared
+            },
+          ]);
         }
       });
     }
   }, [messageFeed, gameStarted, gameOver]);
-  
+
   // Reset tracking when game starts
   useEffect(() => {
     if (gameStarted) {
@@ -52,24 +61,21 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
     if (speed === 2) return 2; // Fast
     return 1; // Default
   };
-  
+
   // Calculate speed bonus based on reaction time
   const calculateSpeedBonus = (reactionTimeMs) => {
     // Max bonus of 50-60 points, decreasing over 10 seconds
     const maxBonus = 60;
     const minBonus = 0;
     const maxReactionTime = 10000; // 10 seconds
-    
+
     // Linear decay from max bonus to min bonus over maxReactionTime
-    let bonus = Math.max(
-      minBonus,
-      maxBonus - (maxBonus * (reactionTimeMs / maxReactionTime))
-    );
-    
+    let bonus = Math.max(minBonus, maxBonus - maxBonus * (reactionTimeMs / maxReactionTime));
+
     // Apply upgrade effects for speed bonus
     const upgradeMultiplier = upgradeEffects.getSpeedMultiplier();
     bonus = Math.round(bonus * upgradeMultiplier);
-    
+
     return Math.max(0, Math.min(maxBonus, bonus)); // Clamp between 0 and maxBonus
   };
 
@@ -153,35 +159,41 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
 
       if (isMisinformation) {
         console.log("CORRECT flag - tweet is misinformation");
-        
+        //Track tweet good flagged
+        setCorrectlyAnsweredTweets((prev) => {
+          const updated = [...prev, messageId];
+          console.log("Updated correctly answered tweets:", updated);
+          return updated;
+        });
+
         // Calculate base points for correct flag
         const basePoints = 10; // Base points for correct flag
         const bonusMultiplier = upgradeEffects.getSpeedMultiplier();
         const totalPoints = Math.round(basePoints * gameSpeedMultiplier * bonusMultiplier);
-        
+
         // Calculate speed bonus based on reaction time
         let speedBonus = 0;
-        const originalTweet = allGameTweets.find(t => t.id === messageId);
-        
+        const originalTweet = allGameTweets.find((t) => t.id === messageId);
+
         if (originalTweet && originalTweet.appearedAt) {
           const reactionTimeMs = Date.now() - originalTweet.appearedAt;
           speedBonus = calculateSpeedBonus(reactionTimeMs);
-          
+
           console.log(`Reaction time: ${reactionTimeMs}ms, Speed bonus: ${speedBonus} points`);
-          
+
           // Update speed bonus in score breakdown
-          setScoreBreakdown(prev => ({
+          setScoreBreakdown((prev) => ({
             ...prev,
-            speedBonus: prev.speedBonus + speedBonus
+            speedBonus: prev.speedBonus + speedBonus,
           }));
-          
+
           // Add speed bonus to base score
           setBaseScore(baseScore + totalPoints + speedBonus);
         } else {
           // Just add base points if no timestamp found
           setBaseScore(baseScore + totalPoints);
         }
-        
+
         // Update score breakdown for correct flags
         setScoreBreakdown((prev) => ({
           ...prev,
@@ -237,22 +249,22 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
   useEffect(() => {
     if (gameOver) {
       // Filter out the tweets that were processed (either flagged or approved)
-      const processedIds = processedTweets.map(tweet => tweet.id);
-      
+      const processedIds = processedTweets.map((tweet) => tweet.id);
+
       // Calculate missed misinformation from ALL tweets that appeared during the game
       const missedMisinformationCount = allGameTweets.filter((tweet) => {
         // Only count tweets that were misinformation AND weren't processed
         const isMisinformation = evaluateTweetContent(tweet);
         const wasProcessed = processedIds.includes(tweet.id);
-        
+
         // Log details for debugging
         if (isMisinformation && !wasProcessed) {
           console.log("Missed misinformation:", tweet);
         }
-        
+
         return isMisinformation && !wasProcessed;
       }).length;
-      
+
       console.log(`Found ${missedMisinformationCount} missed misinformation tweets out of ${allGameTweets.length} total tweets`);
 
       const basePenalty = 5;
@@ -269,6 +281,47 @@ export function useGameActions(gameState, upgradeEffects, processedTweets, setPr
       }
     }
   }, [gameOver]);
+
+  useEffect(() => {
+    
+    if (gameOver && user) {
+      console.log("Tweet saving effect check - gameOver:", gameOver, "user:", user ? user.email : "no user", "allGameTweets:", allGameTweets.length);
+
+      // Create array for ALL correctly handled tweets
+      const allCorrectlyHandledTweets = [];
+
+      // Process ALL tweets that appeared during the game
+      allGameTweets.forEach((tweet) => {
+        const isMisinformation = evaluateTweetContent(tweet);
+        const processedTweet = processedTweets.find((p) => p.id === tweet.id);
+
+        // Case 1: Tweet was misinformation and was correctly flagged
+        if (isMisinformation && processedTweet?.wasFlagged) {
+          allCorrectlyHandledTweets.push(tweet.id);
+        }
+
+        // Case 2: Tweet was NOT misinformation and was correctly NOT flagged
+        if (!isMisinformation && (!processedTweet || !processedTweet.wasFlagged)) {
+          allCorrectlyHandledTweets.push(tweet.id);
+        }
+      });
+
+      console.log(`Total correctly handled tweets: ${allCorrectlyHandledTweets.length} out of ${allGameTweets.length}`);
+
+      // Save all correctly handled tweets
+      if (allCorrectlyHandledTweets.length > 0) {
+        console.log("Saving all correctly handled tweets:", allCorrectlyHandledTweets);
+
+        try {
+          saveCorrectlyAnsweredTweets(allCorrectlyHandledTweets)
+            .then((response) => console.log("All correctly handled tweets saved:", response))
+            .catch((err) => console.error("Error saving correctly handled tweets:", err));
+        } catch (error) {
+          console.error("Error in save effect:", error);
+        }
+      }
+    }
+  }, [gameOver, user, allGameTweets, processedTweets]);
 
   return {
     scoreBreakdown,

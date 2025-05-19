@@ -38,6 +38,7 @@ async function registerUser(username, email, userId) {
           createdAt: new Date().toISOString(),
           money: 0,
           upgrades: {},
+          correctlyAnsweredTweets: [],
         });
         console.log(`REGISTRATION: User data written to Firestore`);
       } catch (writeError) {

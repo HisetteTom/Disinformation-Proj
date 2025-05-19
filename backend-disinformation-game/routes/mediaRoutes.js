@@ -38,15 +38,15 @@ function normalizePath(pathString) {
 
 router.get('/:type', async (req, res) => {
   try {
-    console.log('\n==== MEDIA REQUEST DETAILED ====');
-    console.log('Type:', req.params.type);
-    console.log('Raw path from query:', req.query.path);
+    // console.log('\n==== MEDIA REQUEST DETAILED ====');
+    // console.log('Type:', req.params.type);
+    // console.log('Raw path from query:', req.query.path);
     
     // Normalize path to use forward slashes
     const type = req.params.type;
     let mediaPath = normalizePath(req.query.path || '');
     
-    console.log('Normalized path:', mediaPath);
+    //console.log('Normalized path:', mediaPath);
     
     // Check if storage is initialized correctly
     if (!storage) {
@@ -58,7 +58,7 @@ router.get('/:type', async (req, res) => {
     try {
       const bucket = storage.bucket('disinformation-game-images');
       const [exists] = await bucket.exists();
-      console.log('Bucket access test:', exists ? 'SUCCESS' : 'FAILED');
+      //console.log('Bucket access test:', exists ? 'SUCCESS' : 'FAILED');
       
       if (!exists) {
         console.error('Bucket does not exist or no access');
@@ -84,7 +84,7 @@ router.get('/:type', async (req, res) => {
         const [bucketName, ...objectPathParts] = gsPath.split('/');
         const objectPath = objectPathParts.join('/');
         
-        console.log(`Accessing bucket: ${bucketName}, path: ${objectPath}`);
+        //console.log(`Accessing bucket: ${bucketName}, path: ${objectPath}`);
         
         // Use the correct bucket from the gs:// URL
         const bucket = storage.bucket(bucketName);
@@ -93,7 +93,7 @@ router.get('/:type', async (req, res) => {
         // Check if file exists
         const [exists] = await file.exists();
         if (!exists) {
-          console.log('Profile picture not found in GCP:', objectPath);
+          //console.log('Profile picture not found in GCP:', objectPath);
           
           // Try alternative paths for spaces in usernames
           if (objectPath.includes(' ')) {
@@ -203,10 +203,10 @@ router.get('/:type', async (req, res) => {
           res.setHeader('Content-Type', metadata.contentType);
         }
         
-        console.log('File metadata:', JSON.stringify(metadata, null, 2));
+        //console.log('File metadata:', JSON.stringify(metadata, null, 2));
         
         // Stream the file directly to the response
-        console.log('Streaming file from GCP:', mediaPath);
+        //console.log('Streaming file from GCP:', mediaPath);
         file.createReadStream()
           .on('error', (err) => {
             console.error('Error streaming file:', err);

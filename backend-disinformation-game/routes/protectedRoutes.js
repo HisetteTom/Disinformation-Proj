@@ -38,7 +38,8 @@ router.get("/profile", async (req, res) => {
     const completeUserData = {
       ...req.user,
       money: userData.money || 0,
-      upgrades: userData.upgrades || {}
+      upgrades: userData.upgrades || {},
+      correctlyAnsweredTweets: userData.correctlyAnsweredTweets || [] 
     };
     
     res.status(200).json({
@@ -102,6 +103,8 @@ router.get("/money", async (req, res) => {
 // Get tweets that need moderation (prioritize unclassified tweets)
 router.get('/tweets', async (req, res) => {
   try {
+    const userId = req.user.userId;
+    // Pass the userId to filter out correctly answered tweets
     const tweetsRef = adminDb.collection('tweets');
     
     // First get unclassified tweets
@@ -110,9 +113,17 @@ router.get('/tweets', async (req, res) => {
       .limit(100)
       .get();
     
+    // Get user's correctly answered tweets
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    const alreadyAnsweredTweets = userData.correctlyAnsweredTweets || [];
+    
     let tweets = [];
     unclassifiedSnapshot.forEach(doc => {
-      tweets.push({ id: doc.id, ...doc.data() });
+      // Skip tweets the user has already correctly answered
+      if (!alreadyAnsweredTweets.includes(doc.id)) {
+        tweets.push({ id: doc.id, ...doc.data() });
+      }
     });
     
     // If we have fewer than 100 unclassified tweets, add some classified ones
@@ -123,11 +134,14 @@ router.get('/tweets', async (req, res) => {
         .get();
       
       classifiedSnapshot.forEach(doc => {
-        tweets.push({ id: doc.id, ...doc.data() });
+        // Skip tweets the user has already correctly answered
+        if (!alreadyAnsweredTweets.includes(doc.id)) {
+          tweets.push({ id: doc.id, ...doc.data() });
+        }
       });
     }
     
-    console.log(`Returning ${tweets.length} tweets for moderation`);
+    console.log(`Returning ${tweets.length} tweets for moderation (excluded ${alreadyAnsweredTweets.length} already answered)`);
     res.json(tweets);
   } catch (error) {
     console.error('Error fetching tweets for moderation:', error);
@@ -220,6 +234,63 @@ router.post('/delete', async (req, res) => {
   } catch (error) {
     console.error('Error deleting tweet:', error);
     res.status(500).json({ error: 'Failed to delete tweet' });
+  }
+});
+
+router.post('/answered-tweets', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { tweetIds } = req.body;
+
+    console.log(`DEBUG: Received request to save ${tweetIds?.length} answered tweets for user ${userId}`);
+    console.log(`DEBUG: Tweet IDs:`, tweetIds);
+    
+    console.log(`Received request to save ${tweetIds?.length} answered tweets for user ${userId}`);
+    
+    if (!Array.isArray(tweetIds)) {
+      console.error("Invalid tweet IDs format:", tweetIds);
+      return res.status(400).json({ error: 'Invalid tweet IDs format' });
+    }
+    
+    if (tweetIds.length === 0) {
+      console.log("Empty tweet IDs array, nothing to save");
+      return res.json({ success: true, message: 'No tweets to save', count: 0 });
+    }
+    
+    // Get existing answered tweets for this user
+    const userRef = adminDb.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) {
+      console.error(`User ${userId} not found in Firestore`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userData = userDoc.data();
+    const existingAnsweredTweets = userData.correctlyAnsweredTweets || [];
+    
+    console.log(`User ${userId} has ${existingAnsweredTweets.length} existing answered tweets`);
+    
+    // Combine existing and new correctly answered tweets (remove duplicates)
+    const updatedAnsweredTweets = [...new Set([...existingAnsweredTweets, ...tweetIds])];
+    
+    console.log(`Saving ${updatedAnsweredTweets.length} total answered tweets (${updatedAnsweredTweets.length - existingAnsweredTweets.length} new)`);
+    
+    // Update the user document
+    await userRef.update({ 
+      correctlyAnsweredTweets: updatedAnsweredTweets,
+      lastUpdated: new Date().toISOString()
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Correctly answered tweets saved',
+      count: updatedAnsweredTweets.length,
+      newCount: updatedAnsweredTweets.length - existingAnsweredTweets.length
+    });
+  } catch (error) {
+    console.error('Error saving correctly answered tweets:', error);
+    res.status(500).json({ error: 'Failed to save answered tweets', message: error.message });
   }
 });
 

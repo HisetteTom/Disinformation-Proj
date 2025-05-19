@@ -61,6 +61,7 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
   
   // Now we can use upgradeEffects in gameState
   const gameState = useGameState(onReset, upgradeEffects);
+  gameState.user = user;
   
   // Destructure gameState to access properties
   const { 

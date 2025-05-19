@@ -179,3 +179,60 @@ export const updateUserUpgrades = async (money, upgrades) => {
     throw error;
   }
 };
+
+
+/**
+ * Save correctly answered tweets for a user
+ * @param {string} userId - User ID
+ * @param {Array} tweetIds - Array of tweet IDs correctly answered
+ * @returns {Promise<Object>} - Response data
+ */
+export const saveCorrectlyAnsweredTweets = async (tweetIds) => {
+  try {
+    console.log("Attempting to save tweet IDs:", tweetIds);
+    const token = await getAuthToken();
+    
+    if (!token) {
+      console.error("No auth token available - cannot save tweets");
+      return;
+    }
+    
+    console.log("Token available, sending request to backend");
+    
+    const response = await fetch('http://localhost:3001/api/protected/answered-tweets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ tweetIds }),
+    });
+    
+    console.log("Response status:", response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API error response:", errorText);
+      throw new Error('Failed to save answered tweets: ' + response.status);
+    }
+    
+    const result = await response.json();
+    console.log("API response for saving tweets:", result);
+    return result;
+  } catch (error) {
+    console.error('Error saving correctly answered tweets:', error);
+    // Log the full error object for debugging
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    throw error;
+  }
+};export function useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets) {
+  // Make sure user is properly destructured from gameState
+  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, 
+         messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score } = gameState;
+  
+  // If user isn't included in this destructuring assignment, the effect won't have access to it
+}
