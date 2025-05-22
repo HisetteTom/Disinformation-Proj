@@ -1,0 +1,237 @@
+.network-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 15% 50%, rgba(77, 166, 255, 0.2) 0%, transparent 8%), radial-gradient(circle at 85% 30%, rgba(77, 166, 255, 0.2) 0%, transparent 8%), linear-gradient(rgba(77, 166, 255, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(77, 166, 255, 0.15) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    40px 40px,
+    40px 40px;
+  animation: gridAnimation 40s linear infinite;
+}
+
+.information-flow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-size:
+    100px 100%,
+    200px 100%;
+  animation: dataStream 15s linear infinite;
+}
+
+/* Truth bubbles - verified information */
+.truth-bubble {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(77, 166, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(77, 166, 255, 0.4);
+}
+
+.truth-bubble::before {
+  content: "✓";
+  color: rgba(77, 255, 166, 0.6);
+  font-size: 24px;
+}
+
+.truth-bubble-1 {
+  top: 15%;
+  left: 10%;
+  animation: floatBubble 18s ease-in-out infinite;
+}
+.truth-bubble-2 {
+  top: 30%;
+  right: 15%;
+  animation: floatBubble 22s ease-in-out 2s infinite;
+}
+.truth-bubble-3 {
+  bottom: 25%;
+  left: 20%;
+  animation: floatBubble 20s ease-in-out 4s infinite;
+}
+.truth-bubble-4 {
+  bottom: 40%;
+  right: 25%;
+  animation: floatBubble 25s ease-in-out 1s infinite;
+}
+.truth-bubble-5 {
+  top: 65%;
+  left: 30%;
+  animation: floatBubble 19s ease-in-out 3s infinite;
+}
+.truth-bubble-6 {
+  top: 80%;
+  right: 5%;
+  animation: floatBubble 21s ease-in-out 5s infinite;
+}
+
+/* Falsehood symbols - misinformation */
+.false-symbol {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 77, 77, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
+}
+
+.false-symbol::before {
+  content: "×";
+  color: rgba(255, 77, 77, 0.7);
+  font-size: 34px;
+  font-weight: bold;
+}
+
+.false-symbol-1 {
+  top: 25%;
+  left: 25%;
+  animation: floatSymbol 23s ease-in-out infinite;
+}
+.false-symbol-2 {
+  top: 40%;
+  right: 30%;
+  animation: floatSymbol 19s ease-in-out 3s infinite;
+}
+.false-symbol-3 {
+  bottom: 35%;
+  left: 15%;
+  animation: floatSymbol 21s ease-in-out 2s infinite reverse;
+}
+.false-symbol-4 {
+  bottom: 20%;
+  right: 20%;
+  animation: floatSymbol 17s ease-in-out 5s infinite;
+}
+.false-symbol-5 {
+  top: 75%;
+  left: 40%;
+  animation: floatSymbol 20s ease-in-out 1s infinite;
+}
+.false-symbol-6 {
+  top: 10%;
+  right: 35%;
+  animation: floatSymbol 22s ease-in-out 4s infinite reverse;
+}
+
+/* Social media symbols */
+.social-symbol {
+  position: absolute;
+  color: rgba(77, 166, 255, 0.3);
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.social-symbol-1 {
+  top: 30%;
+  left: 45%;
+  animation: floatSocialSymbol 28s ease-in-out infinite;
+}
+.social-symbol-2 {
+  top: 60%;
+  right: 40%;
+  animation: floatSocialSymbol 24s ease-in-out 2s infinite reverse;
+}
+.social-symbol-3 {
+  bottom: 15%;
+  left: 60%;
+  animation: floatSocialSymbol 26s ease-in-out 4s infinite;
+}
+.social-symbol-4 {
+  top: 20%;
+  right: 55%;
+  animation: floatSocialSymbol 22s ease-in-out 3s infinite reverse;
+}
+
+@keyframes gridAnimation {
+  0% {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      0 0,
+      0 0,
+      40px 40px,
+      40px 40px;
+  }
+}
+
+@keyframes dataStream {
+  0% {
+    background-position:
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      0 100px,
+      100px 0;
+  }
+}
+
+@keyframes floatBubble {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translateY(-70px) translateX(30px) rotate(5deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-120px) translateX(-20px) rotate(10deg);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translateY(-50px) translateX(-40px) rotate(5deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes floatSymbol {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translateY(-50px) translateX(-30px) rotate(-5deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-90px) translateX(40px) rotate(-10deg);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translateY(-30px) translateX(50px) rotate(-5deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes floatSocialSymbol {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 0.3;
+  }
+  33% {
+    transform: translateY(-60px) rotate(10deg) scale(1.2);
+    opacity: 0.5;
+  }
+  66% {
+    transform: translateY(-30px) rotate(-10deg) scale(0.9);
+    opacity: 0.3;
+  }
+}

@@ -10,7 +10,7 @@ import { useGameActions } from "../../hooks/useGameActions";
 import { updateUserUpgrades } from "../../services/authService";
 import { TIME_SCORE_INTERVAL, TIME_SCORE_AMOUNT } from "../../managers/GameStateManager";
 
-function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
+function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore, setTimeLeft }) {
   // Track processed tweets to calculate end-game penalties
   const [processedTweets, setProcessedTweets] = useState([]);
   // Track if money has been saved to prevent duplicate updates
@@ -19,8 +19,32 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
   const [userProfile, setUserProfile] = useState(null);
   // Track if we're fetching the profile
   const [fetchingProfile, setFetchingProfile] = useState(false);
-  //LOADING SCREEN B4 GAME STARTS
+  // Loading screen before game starts - set to true initially to show clear loading state
   const [isInitializing, setIsInitializing] = useState(false);
+  // New state to handle clean initial view
+  const [appState, setAppState] = useState("welcome"); // 'welcome', 'loading', 'playing', 'gameover'
+
+  const handlePlayAgain = () => {
+    // Reset the game state via parent component
+    onReset();
+
+    // Reset score breakdown for new game
+    setScoreBreakdown({
+      correctFlags: 0,
+      incorrectFlags: 0,
+      missedMisinformation: 0,
+      speedBonus: 0,
+    });
+
+    // Reset processed tweets list
+    setProcessedTweets([]);
+
+    // Reset money saved flag
+    setMoneySaved(false);
+
+    // Go back to welcome screen instead of starting a new game directly
+    setAppState("welcome");
+  };
 
   // Fetch user profile (with upgrades) from backend when user changes
   useEffect(() => {
@@ -56,74 +80,31 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
   }, [user]);
 
   // Get upgrade effects based on user PROFILE (which contains upgrades)
-  // IMPORTANT: This must be defined before gameState
   const upgradeEffects = useUpgradeEffects(userProfile);
-  
+
   // Now we can use upgradeEffects in gameState
   const gameState = useGameState(onReset, upgradeEffects);
   gameState.user = user;
-  
+
   // Destructure gameState to access properties
-  const { 
-    gameMessages, 
-    messageFeed, 
-    currentMessage, 
-    factCheckResults, 
-    score, 
-    timeScore, 
-    messagesHandled, 
-    factChecksRemaining, 
-    isLoading, 
-    gameStarted, 
-    gameOver, 
-    timeRemaining, 
-    feedSpeed, 
-    changeFeedSpeed, 
-    isModalOpen, 
-    loading, 
-    gameTimerRef, 
-    refreshTimerRef, 
-    timeScoreTimerRef, 
-    messagesIndexRef, 
-    setGameStarted, 
-    setTimeRemaining, 
-    setMessageFeed, 
-    setFactCheckResults, 
-    setScore, 
-    setTimeScore, 
-    setMessagesHandled, 
-    setFactChecksRemaining, 
-    setGameOver 
-  } = gameState;
+  const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
 
   // Inside your ModeratorGame component - properly notify parent about game state
   useEffect(() => {
-    // When game starts, call the callback with true
-    if (gameStarted) {
-      onGameStateChange(true);
-    } else {
-      onGameStateChange(false);
+    if (gameOver) {
+      onGameStateChange(false, true); // isPlaying=false, gameOver=true
+      setAppState("gameover");
+    } else if (gameStarted) {
+      onGameStateChange(true, false); // isPlaying=true, gameOver=false
+      setAppState("playing");
     }
-  }, [gameStarted, onGameStateChange]);
+  }, [gameStarted, gameOver, onGameStateChange]);
 
   // Get game actions and scoring functionality
-  const { 
-    scoreBreakdown, 
-    setScoreBreakdown, 
-    handleTweetClick, 
-    handleCloseModal, 
-    handleModeration 
-  } = useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets);
+  const { scoreBreakdown, setScoreBreakdown, handleTweetClick, handleCloseModal, handleModeration } = useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets);
 
   // Create tweet refresher function
-  const startTweetRefresh = createTweetRefresher(
-    refreshTimerRef, 
-    feedSpeed, 
-    messagesIndexRef, 
-    gameMessages, 
-    gameOver, 
-    setMessageFeed
-  );
+  const startTweetRefresh = createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRef, gameMessages, gameOver, setMessageFeed);
 
   // Update tweet refresh rate when speed changes
   useEffect(() => {
@@ -159,7 +140,6 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
           }
 
           const data = await response.json();
-          // Get current money from money endpoint
           const currentMoney = parseInt(data.money || 0);
           console.log("Current money from database:", currentMoney);
 
@@ -192,8 +172,22 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
     }
   }, [gameStarted]);
 
+  useEffect(() => {
+    if (typeof setLiveScore === "function") {
+      setLiveScore(score);
+    }
+  }, [score, setLiveScore]);
+
+  useEffect(() => {
+    if (typeof setTimeLeft === "function") {
+      setTimeLeft(timeRemaining);
+    }
+  }, [timeRemaining, setTimeLeft]);
+
   const handleStartGame = async () => {
-    // Show loading screen first
+    // Change app state to loading
+    setAppState("loading");
+    // Show loading screen
     setIsInitializing(true);
 
     // Reset score breakdown for new game
@@ -237,7 +231,7 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
       () => gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
     );
 
-    // KEY FIX: Add the first tweet immediately
+    // Add the first tweet immediately
     if (gameMessages.length > 0) {
       const firstTweet = {
         ...gameMessages[0],
@@ -259,62 +253,50 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange }) {
       }, 600);
     }
 
-    // Keep loading screen visible long enough to see the first tweet appear
+    // Keep loading screen visible for a consistent amount of time
     setTimeout(() => {
       console.log("Setting isInitializing to false");
       setIsInitializing(false);
-    }, 1500);
+      setAppState("playing");
+    }, 2000);
   };
 
-  // Render loading state if data is loading or we're fetching profile
+  // During initial data loading
   if (isLoading || (user && fetchingProfile)) {
     return <LoadingState />;
   }
 
-  // Render game start screen if game hasn't started
-  if (!gameStarted) {
-    return <GameStartScreen user={user} onLogin={onLogin} onStartGame={handleStartGame} />;
-  }
+  // Handle different app states with clear transitions
+  switch (appState) {
+    case "welcome":
+      return <GameStartScreen user={user} onLogin={onLogin} onStartGame={handleStartGame} />;
 
-  // Show loading state during initialization
-  if (isInitializing) {
-    return <GameLoadingState />;
-  }
+    case "loading":
+      return <GameLoadingState />;
 
-  // Render game over screen if game is over
-  if (gameOver) {
-    return (
-      <GameOver
-        score={score}
-        messagesHandled={messagesHandled}
-        onPlayAgain={onReset}
-        scoreBreakdown={scoreBreakdown}
-        timeScore={timeScore}
-        user={userProfile || user}
-        authUser={user}
-        onProfileUpdate={(updatedProfile) => {
-          setUserProfile(updatedProfile);
-        }}
-      />
-    );
-  }
+    case "gameover":
+      return (
+        <GameOver
+          score={score}
+          messagesHandled={messagesHandled}
+          onPlayAgain={handlePlayAgain} // Changed from onReset to handlePlayAgain
+          scoreBreakdown={scoreBreakdown}
+          timeScore={timeScore}
+          user={userProfile || user}
+          authUser={user}
+          onProfileUpdate={(updatedProfile) => {
+            console.log("Profile updated from game over screen:", updatedProfile);
+            setUserProfile(updatedProfile);
+          }}
+        />
+      );
 
-  // Render game play area if game is active
-  return <GamePlayArea 
-    timeRemaining={timeRemaining} 
-    feedSpeed={feedSpeed} 
-    changeFeedSpeed={changeFeedSpeed} 
-    score={score} 
-    messageFeed={messageFeed} 
-    handleTweetClick={handleTweetClick} 
-    isModalOpen={isModalOpen} 
-    currentMessage={currentMessage} 
-    handleCloseModal={handleCloseModal} 
-    handleModeration={handleModeration} 
-    factCheckResults={factCheckResults} 
-    loading={loading} 
-    factChecksRemaining={factChecksRemaining} 
-  />;
+    case "playing":
+      return <GamePlayArea timeRemaining={timeRemaining} feedSpeed={feedSpeed} changeFeedSpeed={changeFeedSpeed} score={score} messageFeed={messageFeed} handleTweetClick={handleTweetClick} isModalOpen={isModalOpen} currentMessage={currentMessage} handleCloseModal={handleCloseModal} handleModeration={handleModeration} factCheckResults={factCheckResults} loading={loading} factChecksRemaining={factChecksRemaining} />;
+
+    default:
+      return <LoadingState />;
+  }
 }
 
 export default ModeratorGame;

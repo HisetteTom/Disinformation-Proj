@@ -1,5 +1,15 @@
 import { REFRESH_INTERVAL, INITIAL_TWEETS_COUNT } from "./GameStateManager";
 
+/**
+ * Evaluates whether a tweet contains misinformation
+ * @param {Object} tweet - The tweet to evaluate
+ * @returns {boolean} - True if the tweet contains misinformation
+ */
+export function evaluateTweetContent(tweet) {
+  // Simply check the isDisinfo flag which should be set when tweets are loaded
+  return tweet.isDisinfo === true || tweet.isDisinfo === "true";
+}
+
 export function startGame(
   setGameStarted,
   setTimeRemaining,
@@ -28,22 +38,41 @@ export function startGame(
   setFactChecksRemaining(5);
   messagesIndexRef.current = 0;
 
+  // Clear any existing timers first
+  if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+  if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+  if (timeScoreTimerRef.current) clearInterval(timeScoreTimerRef.current);
+
   // Start the game timer
   gameTimerRef.current = setInterval(() => {
     setTimeRemaining((prev) => {
       if (prev <= 1000) {
-        // When time is up, clear all timers
+        // When time is up, clear all timers immediately
         clearInterval(gameTimerRef.current);
         clearInterval(refreshTimerRef.current);
         clearInterval(timeScoreTimerRef.current);
-        setGameOver(true);
+        
+        // Clear references to prevent issues
+        gameTimerRef.current = null;
+        refreshTimerRef.current = null;
+        timeScoreTimerRef.current = null;
+        
+        // Force transition to game over state
+        console.log("TIME'S UP - Transitioning to game over state");
+        
+        // Use a more reliable approach with a direct timeout
+        // This ensures state transitions have time to complete
+        setTimeout(() => {
+          setGameOver(true);
+        }, 500); // Longer delay to ensure state updates properly
+        
         return 0;
       }
       return prev - 1000;
     });
   }, 1000);
 
-  // Start time scoring - now called directly when the game starts
+  // Start time scoring
   startTimeScoring();
 
   // Start periodic refresh of tweets
@@ -52,94 +81,53 @@ export function startGame(
   }, 1000);
 }
 
-// Periodically refresh the tweet feed
-// Modified to accept timeRemaining as a parameter to prevent tweets in the last 5 seconds
 export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRef, gameMessages, gameOver, setMessageFeed) {
-  return () => {
+  return function startTweetRefresh() {
+    // Clear any existing timer
     if (refreshTimerRef.current) {
       clearInterval(refreshTimerRef.current);
     }
 
-    const interval = REFRESH_INTERVAL / feedSpeed;
+    // Calculate refresh interval based on feed speed
+    // Speed 1 = 5000ms, Speed 2 = 3000ms, Speed 3 = 1000ms
+    const refreshInterval = feedSpeed === 1 ? 5000 : feedSpeed === 2 ? 3000 : 1000;
 
-    let isAddingTweet = false;
-
+    // Set up a new interval to add tweets periodically
     refreshTimerRef.current = setInterval(() => {
-      // Get current remaining time from the DOM instead of passing as parameter
-      // This is cleaner as it doesn't require modifying the component interface
-      const timeRemainingElement = document.querySelector('.game-timer');
-      const timeRemaining = timeRemainingElement ? 
-        parseTimeDisplay(timeRemainingElement.textContent) : 999999;
+      if (gameOver) {
+        clearInterval(refreshTimerRef.current);
+        return;
+      }
+
+      const messageIndex = messagesIndexRef.current;
       
-      // Don't add new tweets if less than 5 seconds remain (5000 ms)
-      const isFinalCountdown = timeRemaining < 5000;
-
-      if (!isAddingTweet && 
-          messagesIndexRef.current < gameMessages.length && 
-          !gameOver && 
-          !isFinalCountdown) {  // This is the new check
-        
-        isAddingTweet = true;
-
-        const nextTweet = {
-          ...gameMessages[messagesIndexRef.current],
+      if (messageIndex < gameMessages.length) {
+        const newTweet = {
+          ...gameMessages[messageIndex],
           isNew: true,
+          appearedAt: Date.now(), // Add timestamp for speed bonus calculation
         };
 
-        setMessageFeed((prev) => {
-          const combined = [nextTweet, ...prev];
-          const maxKeep = INITIAL_TWEETS_COUNT * 2;
-          return combined.length > maxKeep ? combined.slice(0, maxKeep) : combined;
+        setMessageFeed(prevFeed => {
+          // Add new tweet at the beginning of the feed
+          const updatedFeed = [newTweet, ...prevFeed];
+          
+          // Keep only the most recent tweets (last 10)
+          return updatedFeed.slice(0, 10);
         });
 
-        messagesIndexRef.current += 1;
+        // Update the message index for next time
+        messagesIndexRef.current = messageIndex + 1;
 
+        // Remove "new" status after animation completes
         setTimeout(() => {
-          setMessageFeed((prevFeed) => prevFeed.map((msg, index) => (index === 0 ? { ...msg, isNew: false } : msg)));
-          isAddingTweet = false;
+          setMessageFeed(prevFeed => 
+            prevFeed.map(msg => 
+              msg.id === newTweet.id ? { ...msg, isNew: false } : msg
+            )
+          );
         }, 600);
       }
-    }, interval);
+    }, refreshInterval);
   };
-}
-
-
-
-function parseTimeDisplay(timeDisplay) {
-  if (!timeDisplay) return 999999;
-  
-  const parts = timeDisplay.split(':');
-  if (parts.length === 2) {
-    const minutes = parseInt(parts[0], 10);
-    const seconds = parseInt(parts[1], 10);
-    return (minutes * 60 + seconds) * 1000;
-  }
-  
-  return 999999; 
-}
-
-// Evaluate tweet content for misinformation
-export function evaluateTweetContent(message) {
-  console.log('Tweet evaluation input:', message);
-  
-  // If we're passed a complete message object
-  if (typeof message === 'object' && message !== null) {
-    console.log('Message properties:', Object.keys(message));
-    
-    // Use the isDisinfo field if available
-    if ('isDisinfo' in message) {
-      console.log('isDisinfo value found:', message.isDisinfo, typeof message.isDisinfo);
-      return message.isDisinfo;
-    } else {
-      console.log('isDisinfo property NOT found in message!');
-    }
-    
-    // Otherwise fall back to the content
-    message = message.content || "";
-  }
-  
-  // This is just a backup check in case isDisinfo is not available
-  const regexResult = /covid|vaccine|hoax|engineered|fake|conspiracy|secret|truth|exposed|leaked|bill gates|nanochips|tracking|mind control/i.test(message);
-  console.log('Falling back to regex, result:', regexResult);
-  return regexResult;
 }

@@ -38,7 +38,7 @@ const getProfilePicSrc = (profilePic) => {
     const gsPath = profilePic.replace("gs://", "");
     const [bucketName, ...pathParts] = gsPath.split("/");
     const pathString = pathParts.join("/");
-    
+
     // Use direct approach via Vite proxy instead of CORS
     // Route through Vite's proxy to avoid CORS issues
     return `/api/media/profiles/direct?bucket=${bucketName}&path=${encodeURIComponent(pathString)}`;
@@ -108,7 +108,7 @@ const getMediaSrc = (media) => {
   return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${media}`)}`;
 };
 
-function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable, onClose }) {
+function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clickable, onClose, onClick, isExpanded }) {
   const [mediaLoaded, setMediaLoaded] = useState({});
   const [mediaErrors, setMediaErrors] = useState({});
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -204,38 +204,72 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
     );
   };
 
+  // Only updating the return part of the component
+
   return (
-    <div className={`rounded-lg border border-gray-300 bg-white p-4 shadow-sm ${clickable ? "cursor-pointer hover:bg-gray-50" : ""}`}>
+    <div 
+      className={`rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm transition-all duration-300 
+        ${clickable ? "cursor-pointer hover:bg-blue-50 hover:shadow-md" : ""} 
+        ${isExpanded ? "shadow-lg border-blue-300" : ""}`} 
+      onClick={onClick ? onClick : undefined}
+    >
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center">
           <div className="mr-2">{renderProfilePicture()}</div>
-          <span className="font-bold text-gray-800">@{message.author}</span>
+          <div>
+            <span className="font-bold text-gray-800">@{message.author}</span>
+            <div className="text-xs text-blue-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="inline-block h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Verified Account
+            </div>
+          </div>
         </div>
-        <span className="text-sm text-gray-500">{message.timestamp instanceof Date && !isNaN(message.timestamp) ? message.timestamp.toLocaleString() : "Unknown date"}</span>
+        <div className="text-sm text-gray-500 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {message.timestamp instanceof Date && !isNaN(message.timestamp) ? message.timestamp.toLocaleString() : "Unknown date"}
+        </div>
       </div>
 
       <div className="mb-4 py-2 text-gray-800" dangerouslySetInnerHTML={{ __html: formatTweetContent(message.content) }} />
 
-      {/* Display media files if available */}
-      {mediaFilesArray.length > 0 && <div className="mt-2 grid grid-cols-2 gap-2">{mediaFilesArray.map((media, index) => renderMediaItem(media, index))}</div>}
+      {mediaFilesArray.length > 0 && 
+        <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg overflow-hidden border border-blue-100">
+          {mediaFilesArray.map((media, index) => renderMediaItem(media, index))}
+        </div>
+      }
 
-      <div className="mb-4 flex gap-4 text-sm text-gray-600">
-        <span>❤️ {message.likes || 0}</span>
-        <span>🔄 {message.shares || 0}</span>
+      <div className="mt-3 flex gap-4 text-sm text-gray-600 border-t border-gray-100 pt-3">
+        <span className="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          {message.likes || 0}
+        </span>
+        <span className="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {message.shares || 0}
+        </span>
       </div>
 
-      {/* Only show buttons if not explicitly hidden */}
       {!hideButtons && (
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-gray-100">
           {!hideApproveButton && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                // Just close the modal when Approve is clicked
                 if (onClose) onClose();
               }}
-              className="rounded bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
+              className="rounded bg-green-600 px-3 py-1 text-white transition hover:bg-green-700 flex items-center"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
               Approve
             </button>
           )}
@@ -244,8 +278,11 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
               e.stopPropagation();
               onModerate(message.id, "flag");
             }}
-            className="rounded bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
+            className="rounded bg-red-600 px-3 py-1 text-white transition hover:bg-red-700 flex items-center"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
             Intox
           </button>
           <button
@@ -253,8 +290,11 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
               e.stopPropagation();
               onModerate(message.id, "factcheck");
             }}
-            className="rounded bg-blue-600 px-3 py-1 text-white transition hover:bg-blue-700"
+            className="rounded bg-blue-600 px-3 py-1 text-white transition hover:bg-blue-700 flex items-center"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
             Fact Check
           </button>
         </div>
