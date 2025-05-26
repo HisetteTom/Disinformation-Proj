@@ -2,25 +2,25 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION =1* 10 * 1000;
-// Score awarded every 2 seconds
+export const GAME_DURATION = 1 * 60 * 1000;
 export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;
-// Number of initial tweets to show
 export const INITIAL_TWEETS_COUNT = 5;
-// Refresh interval for tweets (in milliseconds)
 export const REFRESH_INTERVAL = 8000;
 
 export function useGameState(onReset, upgradeEffects = null) {
-  // All state declarations remain the same
   const [gameMessages, setGameMessages] = useState([]);
   const [messageFeed, setMessageFeed] = useState([]);
   const [currentMessage, setCurrentMessage] = useState(null);
   const [factCheckResults, setFactCheckResults] = useState({});
   const [score, setScore] = useState(0);
-  const [baseScore, setBaseScore] = useState(0); // Score from flagging tweets
-  const [timeScore, setTimeScore] = useState(0); // Score from time passing
+  const [baseScore, setBaseScore] = useState(0); 
+  const [timeScore, setTimeScore] = useState(0);
+  const [speedBonusScore, setSpeedBonusScore] = useState(0);
+  const [penaltiesApplied, setPenaltiesApplied] = useState(0);
   const [messagesHandled, setMessagesHandled] = useState(0);
+  const [correctFlags, setCorrectFlags] = useState(0);
+  const [incorrectFlags, setIncorrectFlags] = useState(0);
   const [factChecksRemaining, setFactChecksRemaining] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
@@ -29,6 +29,9 @@ export function useGameState(onReset, upgradeEffects = null) {
   const [feedSpeed, setFeedSpeed] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Track handled messages for penalty calculation
+  const [handledMessageIds, setHandledMessageIds] = useState(new Set());
 
   // Refs for timers and message tracking
   const gameTimerRef = useRef(null);
@@ -53,29 +56,150 @@ export function useGameState(onReset, upgradeEffects = null) {
     loadTweets();
   }, []);
 
+  // Calculate total score whenever components change
   useEffect(() => {
-    const newTotalScore = baseScore + timeScore;
+    const newTotalScore = Math.max(0, baseScore + timeScore + speedBonusScore - penaltiesApplied);
+    
+    console.log(`🔄 SCORE RECALCULATION:`);
+    console.log(`  - baseScore: ${baseScore}`);
+    console.log(`  - timeScore: ${timeScore}`);
+    console.log(`  - speedBonusScore: ${speedBonusScore}`);
+    console.log(`  - penaltiesApplied: ${penaltiesApplied}`);
+    console.log(`  - Previous total: ${score}`);
+    console.log(`  - New total: ${newTotalScore}`);
+    
     setScore(newTotalScore);
-    //console.log(`Score updated: ${baseScore} (base) + ${timeScore} (time) = ${newTotalScore}`);
-  }, [baseScore, timeScore]);
+  }, [baseScore, timeScore, speedBonusScore, penaltiesApplied]);
 
-const startTimeScoring = (upgradeBonus = 0) => {
-    // Clear any existing timer first
+  const startTimeScoring = (upgradeBonus = 0) => {
+    console.log(`⏰ Starting time scoring with upgrade bonus: ${upgradeBonus}`);
+    
     if (timeScoreTimerRef.current) {
       clearInterval(timeScoreTimerRef.current);
       timeScoreTimerRef.current = null;
     }
 
-    //console.log("Setting up time scoring once at game start");
-
-    // Start a simple timer that adds 5 points every 2 seconds
     timeScoreTimerRef.current = setInterval(() => {
       setTimeScore((prev) => {
-        const newScore = Math.round( prev + (TIME_SCORE_AMOUNT * (1 + upgradeBonus)));
-        //console.log(`Time score +${TIME_SCORE_AMOUNT}: ${newScore}`);
+        const increment = TIME_SCORE_AMOUNT * (1 + upgradeBonus);
+        const newScore = Math.round(prev + increment);
+        console.log(`⏰ Time score increment: ${prev} + ${increment} = ${newScore}`);
         return newScore;
       });
     }, TIME_SCORE_INTERVAL);
+  };
+
+  // CONSOLIDATED SCORING FUNCTIONS
+  const addCorrectFlag = (points = 10) => {
+    console.log(`✅ CORRECT FLAG: Adding ${points} points to base score`);
+    setBaseScore(prev => {
+      const newScore = prev + points;
+      console.log(`  - Previous base score: ${prev}`);
+      console.log(`  - New base score: ${newScore}`);
+      return newScore;
+    });
+    setCorrectFlags(prev => prev + 1);
+  };
+
+  const addIncorrectFlag = (penalty = 5) => {
+    console.log(`❌ INCORRECT FLAG: Adding ${penalty} penalty`);
+    setPenaltiesApplied(prev => {
+      const newPenalty = prev + penalty;
+      console.log(`  - Previous penalties: ${prev}`);
+      console.log(`  - New penalties: ${newPenalty}`);
+      return newPenalty;
+    });
+    setIncorrectFlags(prev => prev + 1);
+  };
+
+  const addSpeedBonus = (bonus) => {
+    console.log(`⚡ SPEED BONUS: Adding ${bonus} points`);
+    setSpeedBonusScore(prev => {
+      const newScore = prev + bonus;
+      console.log(`  - Previous speed bonus: ${prev}`);
+      console.log(`  - New speed bonus: ${newScore}`);
+      return newScore;
+    });
+  };
+
+  const handleMessageModeration = (messageId, isCorrect, points = 10, penalty = 5) => {
+    console.log(`🎯 HANDLING MODERATION for message ${messageId}: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`);
+    
+    // Track this message as handled
+    setHandledMessageIds(prev => new Set([...prev, messageId]));
+    setMessagesHandled(prev => prev + 1);
+
+    if (isCorrect) {
+      addCorrectFlag(points);
+    } else {
+      addIncorrectFlag(penalty);
+    }
+  };
+
+  const calculateMissedMisinformationPenalty = () => {
+    console.log(`🏁 CALCULATING MISSED MISINFORMATION PENALTIES`);
+    
+    // Find all misinformation tweets that were shown but not handled
+    const shownMisinformationTweets = messageFeed.filter(msg => msg.isDisinfo);
+    const missedMisinformation = shownMisinformationTweets.filter(msg => !handledMessageIds.has(msg.id));
+    
+    console.log(`📊 MISSED MISINFORMATION ANALYSIS:`);
+    console.log(`  - Total shown misinformation tweets: ${shownMisinformationTweets.length}`);
+    console.log(`  - Handled message IDs:`, Array.from(handledMessageIds));
+    console.log(`  - Missed misinformation tweets: ${missedMisinformation.length}`);
+    
+    if (missedMisinformation.length > 0) {
+      console.log(`❌ Missed misinformation tweets:`);
+      missedMisinformation.forEach(tweet => {
+        console.log(`  - ID ${tweet.id}: "${tweet.content.substring(0, 50)}..."`);
+      });
+
+      // Calculate penalty (base 5 points per missed tweet, reduced by upgrades)
+      const basePenaltyPerMiss = 5;
+      const penaltyReduction = upgradeEffects?.penaltyReduction || 0;
+      const penaltyPerMiss = Math.max(1, basePenaltyPerMiss - penaltyReduction);
+      const totalMissedPenalty = missedMisinformation.length * penaltyPerMiss;
+
+      console.log(`💸 MISSED MISINFORMATION PENALTY CALCULATION:`);
+      console.log(`  - Missed count: ${missedMisinformation.length}`);
+      console.log(`  - Base penalty per miss: ${basePenaltyPerMiss}`);
+      console.log(`  - Penalty reduction from upgrades: ${penaltyReduction}`);
+      console.log(`  - Actual penalty per miss: ${penaltyPerMiss}`);
+      console.log(`  - Total missed penalty: ${totalMissedPenalty}`);
+
+      // Apply the penalty
+      setPenaltiesApplied(prev => {
+        const newTotal = prev + totalMissedPenalty;
+        console.log(`  - Previous total penalties: ${prev}`);
+        console.log(`  - New total penalties: ${newTotal}`);
+        return newTotal;
+      });
+
+      return {
+        missedCount: missedMisinformation.length,
+        penalty: totalMissedPenalty,
+        missedTweets: missedMisinformation
+      };
+    }
+
+    return { missedCount: 0, penalty: 0, missedTweets: [] };
+  };
+
+  const getFinalGameStats = () => {
+    const finalStats = {
+      score: score,
+      baseScore: baseScore,
+      timeScore: timeScore,
+      speedBonusScore: speedBonusScore,
+      penaltiesApplied: penaltiesApplied,
+      messagesHandled: messagesHandled,
+      correctFlags: correctFlags,
+      incorrectFlags: incorrectFlags,
+      totalMessages: messageFeed.length
+    };
+
+    console.log(`📊 FINAL GAME STATS:`, finalStats);
+    return finalStats;
   };
 
   const resetGameState = () => {
@@ -93,7 +217,7 @@ const startTimeScoring = (upgradeBonus = 0) => {
       timeScoreTimerRef.current = null;
     }
 
-    // Reset state
+    // Reset all state
     setGameMessages([]);
     setMessageFeed([]);
     setCurrentMessage(null);
@@ -101,60 +225,79 @@ const startTimeScoring = (upgradeBonus = 0) => {
     setScore(0);
     setBaseScore(0);
     setTimeScore(0);
+    setSpeedBonusScore(0);
+    setPenaltiesApplied(0);
     setMessagesHandled(0);
+    setCorrectFlags(0);
+    setIncorrectFlags(0);
     setFactChecksRemaining(5);
     setGameStarted(false);
     setGameOver(false);
     setTimeRemaining(GAME_DURATION);
+    setHandledMessageIds(new Set());
     messagesIndexRef.current = 0;
   };
 
   const loadTweets = async () => {
-    try {
-      setIsLoading(true);
-      const tweetsData = await fetchTweets();
+  try {
+    setIsLoading(true);
+    const tweetsData = await fetchTweets();
 
-      // Debug the raw tweet data
-      console.log("Raw tweet data first item:", tweetsData[0]);
+    console.log("Raw tweets data sample:", tweetsData[0]);
 
-      const formattedTweets = tweetsData.map((tweet, index) => {
-        // Check the exact value/type of is_disinfo
-        console.log(`Tweet ${index} is_disinfo:`, tweet.is_disinfo, typeof tweet.is_disinfo);
+    const formattedTweets = tweetsData.map((tweet, index) => {
+      // Use the actual tweet ID if it exists, otherwise fall back to a generated ID
+      let tweetId;
+      if (tweet.id && tweet.id !== null && tweet.id !== undefined) {
+        tweetId = tweet.id;
+      } else if (tweet.Tweet_ID && tweet.Tweet_ID !== null && tweet.Tweet_ID !== undefined) {
+        tweetId = tweet.Tweet_ID;
+      } else {
+        // Fallback to index-based ID but make it unique
+        tweetId = `tweet_${index}_${Date.now()}`;
+      }
 
-        return {
-          id: index + 1,
-          author: tweet.Username,
-          content: tweet.Text,
-          timestamp: parseTwitterDate(tweet.Created_At),
-          likes: parseInt(tweet.Likes) || 0,
-          shares: parseInt(tweet.Retweets) || 0,
-          profilePic: tweet.Profile_Pic,
-          mediaFiles: tweet.Media_Files ? tweet.Media_Files.split("|") : [],
-          isNew: true,
-          isDisinfo: tweet.is_disinfo === true || tweet.is_disinfo === "true",
-        };
-      });
+      console.log(`Tweet ${index}: Using ID ${tweetId}`);
 
-      // Check a formatted tweet
-      console.log("Formatted tweet example:", formattedTweets[0]);
+      return {
+        id: tweetId,
+        author: tweet.Username || `User${index}`,
+        content: tweet.Text || "",
+        timestamp: parseTwitterDate(tweet.Created_At),
+        likes: parseInt(tweet.Likes) || 0,
+        shares: parseInt(tweet.Retweets) || 0,
+        profilePic: tweet.Profile_Pic || "",
+        mediaFiles: tweet.Media_Files ? tweet.Media_Files.split("|") : [],
+        isNew: true,
+        isDisinfo: tweet.is_disinfo === true || tweet.is_disinfo === "true",
+      };
+    });
 
-      // Use session ID to ensure different randomization each time
-      const seed = (sessionIdRef.current % 1000) / 1000;
-      const shuffled = [...formattedTweets].sort(() => 0.5 - Math.random() + seed * 0.2 - 0.1);
-      setGameMessages(shuffled);
-    } catch (error) {
-      console.error("Error loading tweets:", error);
-    } finally {
-      setIsLoading(false);
+    console.log("Formatted tweets sample:", formattedTweets[0]);
+    console.log("All tweet IDs:", formattedTweets.map(t => t.id));
+
+    // Validate that all tweets have valid IDs
+    const invalidTweets = formattedTweets.filter(tweet => !tweet.id || tweet.id === null || tweet.id === undefined);
+    if (invalidTweets.length > 0) {
+      console.error("Found tweets with invalid IDs:", invalidTweets);
     }
-  };
 
-  // Change the feed speed
+    const seed = (sessionIdRef.current % 1000) / 1000;
+    const shuffled = [...formattedTweets].sort(() => 0.5 - Math.random() + seed * 0.2 - 0.1);
+    setGameMessages(shuffled);
+  } catch (error) {
+    console.error("Error loading tweets:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
   const changeFeedSpeed = (newSpeed) => {
     setFeedSpeed(newSpeed);
   };
 
   return {
+    // State
     gameMessages,
     messageFeed,
     setMessageFeed,
@@ -168,8 +311,14 @@ const startTimeScoring = (upgradeBonus = 0) => {
     setBaseScore,
     timeScore,
     setTimeScore,
+    speedBonusScore,
+    setSpeedBonusScore,
+    penaltiesApplied,
+    setPenaltiesApplied,
     messagesHandled,
     setMessagesHandled,
+    correctFlags,
+    incorrectFlags,
     factChecksRemaining,
     setFactChecksRemaining,
     isLoading,
@@ -185,12 +334,22 @@ const startTimeScoring = (upgradeBonus = 0) => {
     setIsModalOpen,
     loading,
     setLoading,
+
+    // Refs
     gameTimerRef,
     refreshTimerRef,
     timeScoreTimerRef,
     messagesIndexRef,
     sessionIdRef,
+
+    // Functions
     resetGameState,
     startTimeScoring,
+    handleMessageModeration,
+    addCorrectFlag,
+    addIncorrectFlag,
+    addSpeedBonus,
+    calculateMissedMisinformationPenalty,
+    getFinalGameStats,
   };
 }

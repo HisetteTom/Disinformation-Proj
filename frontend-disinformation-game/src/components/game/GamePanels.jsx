@@ -9,9 +9,22 @@ export function LoadingState() {
   );
 }
 
-// Update the GameOver component to include onProfileUpdate in its parameters
-export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, user, authUser, onProfileUpdate }) {
+// UPDATED: Add speedBonusScore parameter and use it instead of scoreBreakdown.speedBonus
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, speedBonusScore, user, authUser, onProfileUpdate }) {
   var [shop, setShop] = useState(false);
+
+  // Calculate the reduced penalties based on the upgrade level
+  const getMistakePenaltyText = () => {
+    if (!user || !user.upgrades || !user.upgrades.mistake_shield) return "5";
+    
+    const shieldLevel = user.upgrades.mistake_shield;
+    const reduction = shieldLevel * 0.25;
+    const penalty = 5 * (1 - reduction);
+    
+    return penalty.toFixed(1);
+  };
+
+  const penaltyPerMistake = getMistakePenaltyText();
 
   return (
     <div className="animate-fadeIn mx-auto max-w-2xl rounded-lg border border-[#4DA6FF]/30 bg-gradient-to-r from-[#123C6D]/90 to-[#1a4b82]/90 p-6 shadow-lg">
@@ -22,7 +35,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
           </svg>
         </div>
         <h1 className="text-shadow text-3xl font-bold text-white">Game Over!</h1>
-        <h2 className="mb-2 text-xl font-bold text-[#4DA6FF]">${score}</h2>
+        <h2 className="mb-2 text-xl font-bold text-[#4DA6FF]">{score}</h2>
         <p className="mb-2 text-white/80">
           <span className="mr-1 inline-flex items-center rounded-md border border-[#4DA6FF]/40 bg-[#123C6D] px-2 py-1">
             <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,47 +68,51 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Incorrect flags: -{scoreBreakdown.incorrectFlags * 5} points ({scoreBreakdown.incorrectFlags} tweets)
+              Incorrect flags: -{(scoreBreakdown.incorrectFlags * parseFloat(penaltyPerMistake)).toFixed(1)} points ({scoreBreakdown.incorrectFlags} tweets)
+              {penaltyPerMistake !== "5" && <span className="ml-1 text-xs">(Shield active: -{penaltyPerMistake} per mistake)</span>}
             </li>
           )}
 
           {scoreBreakdown.missedMisinformation > 0 && (
-            <li className="flex items-center rounded-md border border-red-600/30 bg-red-600/20 px-2 py-1 text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <li className="flex items-center rounded-md border border-yellow-600/30 bg-yellow-600/20 px-2 py-1 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              Missed misinformation: -{scoreBreakdown.missedMisinformation * 5} points ({scoreBreakdown.missedMisinformation} tweets)
+              Missed misinformation: -{(scoreBreakdown.missedMisinformation * 2.5).toFixed(1)} points ({scoreBreakdown.missedMisinformation} tweets)
             </li>
           )}
 
-          {scoreBreakdown.speedBonus > 0 && (
+          {/* UPDATED: Use speedBonusScore instead of scoreBreakdown.speedBonus */}
+          {speedBonusScore > 0 && (
             <li className="flex items-center rounded-md border border-blue-600/30 bg-blue-600/20 px-2 py-1 text-white">
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Speed bonus: +{scoreBreakdown.speedBonus} points
+              Speed bonus: +{speedBonusScore} points
+              {user?.upgrades?.speed_multiplier && <span className="ml-1 text-xs">(Quick Reflexes active: +{user.upgrades.speed_multiplier * 25}%)</span>}
             </li>
           )}
 
           {timeScore > 0 && (
-            <li className="flex items-center rounded-md border border-blue-600/30 bg-blue-600/20 px-2 py-1 text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <li className="flex items-center rounded-md border border-purple-600/30 bg-purple-600/20 px-2 py-1 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Time bonus: +{timeScore} points
+              {user?.upgrades?.time_bonus && <span className="ml-1 text-xs">(Time Manager active: +{user.upgrades.time_bonus * 20}%)</span>}
             </li>
           )}
         </ul>
       </div>
 
       <div className="flex justify-center gap-4">
-        <button onClick={onPlayAgain} className="flex transform items-center rounded-full bg-gradient-to-r from-[#4DA6FF] to-[#123C6D] px-5 py-3 font-bold text-white transition hover:scale-105 hover:shadow-lg">
+        <button onClick={onPlayAgain} className="flex transform items-center rounded-lg bg-[#4DA6FF] px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-[#4DA6FF]/80 hover:shadow-lg">
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
           Back to Home
         </button>
-        <button onClick={() => setShop(true)} className="flex transform items-center rounded-full bg-gradient-to-r from-green-500 to-green-600 px-5 py-3 font-bold text-white transition hover:scale-105 hover:shadow-lg">
+        <button onClick={() => setShop(true)} className="flex transform items-center rounded-lg bg-green-500 px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-green-500/80 hover:shadow-lg">
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -115,8 +132,12 @@ export function TimerDisplay({ timeRemaining, feedSpeed, changeFeedSpeed }) {
   return (
     <div className="flex items-center space-x-4">
       <div className="flex items-center space-x-2">
-        <span className="text-sm text-gray-600">Speed:</span>
-        <select value={feedSpeed} onChange={(e) => changeFeedSpeed(Number(e.target.value))} className="rounded border border-gray-300 px-2 py-1">
+        <span className="text-sm text-white">Speed:</span>
+        <select 
+          value={feedSpeed} 
+          onChange={(e) => changeFeedSpeed(Number(e.target.value))} 
+          className="rounded bg-white/90 border border-[#4DA6FF]/50 px-3 py-1.5 text-[#123C6D] font-medium shadow-md hover:shadow-lg transition-all focus:ring-2 focus:ring-[#4DA6FF] focus:outline-none backdrop-blur-sm"
+        >
           <option value={0.5}>Slow</option>
           <option value={1}>Normal</option>
           <option value={2}>Fast</option>
@@ -207,7 +228,6 @@ function FactResults({ results, onModerate, messageId, largerArticles }) {
   );
 }
 
-// Missing component - NoResults
 function NoResults({ message, onModerate, messageId }) {
   return (
     <>
@@ -233,6 +253,9 @@ export function GameLoadingState() {
 function ActionButtons({ onModerate, messageId }) {
   return (
     <div className="mt-4 flex gap-3">
+      <button onClick={() => onModerate(messageId, "approve")} className="rounded bg-green-600 px-4 py-2 text-white transition hover:bg-green-700">
+        {"Approve"}
+      </button>
       <button onClick={() => onModerate(messageId, "flag")} className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700">
         {"Intox"}
       </button>

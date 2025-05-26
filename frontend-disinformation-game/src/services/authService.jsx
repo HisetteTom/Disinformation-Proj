@@ -1,12 +1,5 @@
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile,
-} from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,11 +19,7 @@ const auth = getAuth(app);
 export const register = async (email, password, username) => {
   try {
     // First create the user with Firebase Authentication
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password,
-    );
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
     // Set display name for the user
     await updateProfile(userCredential.user, {
@@ -59,10 +48,7 @@ export const register = async (email, password, username) => {
       try {
         await userCredential.user.delete();
       } catch (deleteError) {
-        console.error(
-          "Error cleaning up user after failed registration:",
-          deleteError,
-        );
+        console.error("Error cleaning up user after failed registration:", deleteError);
       }
       throw new Error("Registration failed on server");
     }
@@ -77,11 +63,7 @@ export const register = async (email, password, username) => {
 // Login user
 export const login = async (email, password) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password,
-    );
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error) {
     console.error("Login error:", error);
@@ -154,20 +136,17 @@ export const updateUserUpgrades = async (money, upgrades) => {
       throw new Error("User not authenticated");
     }
 
-    const response = await fetch(
-      "http://localhost:3001/api/protected/upgrades",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          money,
-          upgrades,
-        }),
+    const response = await fetch("http://localhost:3001/api/protected/upgrades", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({
+        money,
+        upgrades,
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to update upgrades");
@@ -180,7 +159,6 @@ export const updateUserUpgrades = async (money, upgrades) => {
   }
 };
 
-
 /**
  * Save correctly answered tweets for a user
  * @param {string} userId - User ID
@@ -191,48 +169,73 @@ export const saveCorrectlyAnsweredTweets = async (tweetIds) => {
   try {
     console.log("Attempting to save tweet IDs:", tweetIds);
     const token = await getAuthToken();
-    
+
     if (!token) {
       console.error("No auth token available - cannot save tweets");
       return;
     }
-    
+
     console.log("Token available, sending request to backend");
-    
-    const response = await fetch('http://localhost:3001/api/protected/answered-tweets', {
-      method: 'POST',
+
+    const response = await fetch("http://localhost:3001/api/protected/answered-tweets", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ tweetIds }),
     });
-    
+
     console.log("Response status:", response.status);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API error response:", errorText);
-      throw new Error('Failed to save answered tweets: ' + response.status);
+      throw new Error("Failed to save answered tweets: " + response.status);
     }
-    
+
     const result = await response.json();
     console.log("API response for saving tweets:", result);
     return result;
   } catch (error) {
-    console.error('Error saving correctly answered tweets:', error);
+    console.error("Error saving correctly answered tweets:", error);
     // Log the full error object for debugging
-    console.error('Error details:', {
+    console.error("Error details:", {
       name: error.name,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     throw error;
   }
-};export function useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets) {
+};
+export function useGameActions(gameState, upgradeEffects, processedTweets, setProcessedTweets) {
   // Make sure user is properly destructured from gameState
-  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, 
-         messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score } = gameState;
-  
-  // If user isn't included in this destructuring assignment, the effect won't have access to it
+  const { messageFeed, setMessageFeed, setCurrentMessage, setIsModalOpen, baseScore, setBaseScore, messagesHandled, setMessagesHandled, feedSpeed, gameOver, user, score } = gameState;
 }
+
+
+export const resetUserProfile = async () => {
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      throw new Error("User not authenticated");
+    }
+
+    const response = await fetch("http://localhost:3001/api/protected/reset-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to reset profile");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error resetting profile:", error);
+    throw error;
+  }
+};

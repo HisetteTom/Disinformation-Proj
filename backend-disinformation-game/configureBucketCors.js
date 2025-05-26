@@ -13,10 +13,10 @@ const buckets = [
   'disinformation-game-data'
 ];
 
-// Origins to allow (your development servers)
+// Origins to allow
 const origins = [
   'http://localhost:5173',  // Vite dev server
-  'http://localhost:3000',  // Optional: React default port
+  'http://localhost:3000',  // React default port
   'http://localhost:3001'   // Your backend server
 ];
 

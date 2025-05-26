@@ -86,8 +86,15 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
   const gameState = useGameState(onReset, upgradeEffects);
   gameState.user = user;
 
-  // Destructure gameState to access properties
-  const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
+  const { 
+    gameMessages, messageFeed, currentMessage, factCheckResults, score, 
+    timeScore, speedBonusScore, messagesHandled, factChecksRemaining, 
+    isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, 
+    changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, 
+    timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, 
+    setMessageFeed, setFactCheckResults, setScore, setTimeScore, 
+    setMessagesHandled, setFactChecksRemaining, setGameOver 
+  } = gameState;
 
   // Inside your ModeratorGame component - properly notify parent about game state
   useEffect(() => {
@@ -279,9 +286,10 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
         <GameOver
           score={score}
           messagesHandled={messagesHandled}
-          onPlayAgain={handlePlayAgain} // Changed from onReset to handlePlayAgain
+          onPlayAgain={handlePlayAgain}
           scoreBreakdown={scoreBreakdown}
           timeScore={timeScore}
+          speedBonusScore={speedBonusScore} 
           user={userProfile || user}
           authUser={user}
           onProfileUpdate={(updatedProfile) => {

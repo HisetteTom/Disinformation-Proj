@@ -104,17 +104,17 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
 
   return (
     <div
-      className="fixed inset-0 z-500 flex items-center justify-center pt-24 transition-all duration-500"
+      className="fixed inset-0 z-[9999] flex items-center justify-center pt-24 transition-all duration-500"
       onClick={Diplay}
       style={{  
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        backgroundColor: "rgba(0, 5, 20, 0.5)", // Reduced opacity from 0.75 to 0.5
-        backgroundImage: "linear-gradient(to bottom right, rgba(18, 60, 109, 0.25), rgba(77, 166, 255, 0.25))", // Reduced gradient opacity
+        backgroundColor: "rgba(0, 5, 20, 0.5)",
+        backgroundImage: "linear-gradient(to bottom right, rgba(18, 60, 109, 0.25), rgba(77, 166, 255, 0.25))",
       }}
     >
       <div
-        className="animate-fadeIn animate-scale-in flex max-h-[75vh] w-full max-w-4xl flex-col overflow-y-auto rounded-lg border border-[#4DA6FF]/60 bg-gradient-to-r from-[#123C6D]/80 to-[#1a4b82]/80 p-6 shadow-2xl backdrop-blur-md backdrop-filter"
+        className="animate-fadeIn animate-scale-in flex max-h-[70vh] w-full max-w-4xl flex-col overflow-y-auto rounded-lg border border-[#4DA6FF]/60 bg-gradient-to-r from-[#123C6D]/80 to-[#1a4b82]/80 p-6 shadow-2xl backdrop-blur-md backdrop-filter"
         onClick={(e) => e.stopPropagation()}
         style={{
           animation: "fadeIn 0.4s ease-out, scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
@@ -142,7 +142,13 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
           {availableUpgrades.map((upgrade) => (
             <div key={upgrade.id} className={`rounded-lg border p-4 backdrop-blur-sm backdrop-filter transition-all duration-300 ${upgrade.canPurchase ? "cursor-pointer border-[#4DA6FF]/30 bg-[#123C6D]/60 hover:border-[#4DA6FF]/60 hover:bg-[#123C6D]/70" : "border-[#4DA6FF]/10 bg-[#123C6D]/30 opacity-70"}`}>
               <div className="flex items-start">
-                <div className="mr-4 flex h-16 w-16 items-center justify-center rounded-md border border-[#4DA6FF]/40 bg-[#4DA6FF]/20 backdrop-blur-sm backdrop-filter">{upgrade.img ? <img src={`./img${upgrade.img}`} className="h-10 w-10" alt={upgrade.name} /> : <div className="text-2xl text-[#4DA6FF]">⚡</div>}</div>
+                <div className="mr-4 flex h-16 w-16 items-center justify-center rounded-md border border-[#4DA6FF]/40 bg-[#4DA6FF]/20 backdrop-blur-sm backdrop-filter">
+                  {upgrade.img ? (
+                    <img src={`./img${upgrade.img}`} className="h-10 w-10" alt={upgrade.name} />
+                  ) : (
+                    <div className="text-2xl text-[#4DA6FF]">⚡</div>
+                  )}
+                </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white">{upgrade.name}</h3>
                   <div className="mb-1 flex items-center">
@@ -159,23 +165,51 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
                     </div>
                   </div>
                   <p className="mb-2 text-sm text-white/80">{upgrade.desc}</p>
-                  <div className="text-xs text-[#4DA6FF]/70">{upgrade.currentLevel > 0 ? <span>Current: {upgrade.levelDesc[upgrade.currentLevel - 1]}</span> : <span>Not purchased yet</span>}</div>
-                  {upgrade.currentLevel < upgrade.maxLevel && <div className="text-xs text-[#4DA6FF]">Next: {upgrade.levelDesc[upgrade.currentLevel]}</div>}
+                  <div className="text-xs text-[#4DA6FF]/70">
+                    {upgrade.currentLevel > 0 ? (
+                      <span>Current: {upgrade.levelDesc[upgrade.currentLevel - 1]}</span>
+                    ) : (
+                      <span>Not purchased yet</span>
+                    )}
+                  </div>
+                  {upgrade.currentLevel < upgrade.maxLevel && (
+                    <div className="text-xs text-[#4DA6FF]">Next: {upgrade.levelDesc[upgrade.currentLevel]}</div>
+                  )}
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div className="font-bold text-white">{upgrade.currentLevel < upgrade.maxLevel ? `$${upgrade.nextPrice}` : "Maxed Out"}</div>
+                <div className="font-bold text-white">
+                  {upgrade.currentLevel < upgrade.maxLevel ? `$${upgrade.nextPrice}` : "Maxed Out"}
+                </div>
                 {upgrade.currentLevel < upgrade.maxLevel && (
-                  <button onClick={() => handlePurchase(upgrade)} disabled={!upgrade.canPurchase || isLoading} className={`flex transform items-center rounded-full px-4 py-1.5 text-white backdrop-blur-sm backdrop-filter transition hover:scale-105 ${upgrade.canPurchase ? "bg-gradient-to-r from-[#4DA6FF]/90 to-[#123C6D]/90 hover:shadow-md" : "bg-gray-600/80"}`}>
-                    {upgrade.canPurchase ? (
+                  <button 
+                    onClick={() => handlePurchase(upgrade)} 
+                    disabled={!upgrade.canPurchase || isLoading} 
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition transform hover:scale-105 flex items-center space-x-1 ${
+                      upgrade.canPurchase && !isLoading
+                        ? "bg-[#4DA6FF] text-white hover:bg-[#4DA6FF]/80 shadow-md hover:shadow-lg" 
+                        : "bg-gray-600/50 text-gray-300 cursor-not-allowed"
+                    } ${isLoading ? "opacity-50" : ""}`}
+                  >
+                    {isLoading ? (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        <span>Processing...</span>
+                      </>
+                    ) : upgrade.canPurchase ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         </svg>
-                        Purchase
+                        <span>Purchase</span>
                       </>
                     ) : (
-                      "Can't Afford"
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Can't Afford</span>
+                      </>
                     )}
                   </button>
                 )}
@@ -185,11 +219,14 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
         </div>
 
         <div className="mt-6 text-center">
-          <button onClick={Diplay} className="mx-auto flex items-center rounded-full border border-[#4DA6FF]/30 bg-[#123C6D]/80 px-5 py-2.5 text-white backdrop-blur-sm backdrop-filter transition hover:border-[#4DA6FF]/50 hover:bg-[#123C6D]/70">
-            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <button 
+            onClick={Diplay} 
+            className="rounded-md bg-gray-600/50 px-4 py-3 font-medium text-white transition hover:bg-gray-600/70 border border-gray-500/30 flex items-center space-x-2 mx-auto transform hover:scale-105"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Close Shop
+            <span>Close Shop</span>
           </button>
         </div>
       </div>

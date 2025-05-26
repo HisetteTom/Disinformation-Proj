@@ -24,12 +24,13 @@ async function getTweets() {
         
         // Format the tweet to match your frontend expectations
         const formattedTweet = {
+          id: doc.id,
           Username: tweetData.Username,
           Text: tweetData.Text,
           Created_At: tweetData.Created_At,
           Retweets: tweetData.Retweets,
           Likes: tweetData.Likes,
-          Tweet_ID: tweetData.Tweet_ID,
+          Tweet_ID: tweetData.Tweet_ID, 
           Profile_Pic: tweetData.Profile_Pic,
           Media_Files: tweetData.Media_Files,
           T_co_Links: tweetData.T_co_Links,
@@ -40,6 +41,7 @@ async function getTweets() {
       });
       
       console.log(`Retrieved ${tweets.length} tweets from Firestore`);
+      console.log(`Sample tweet IDs: ${tweets.slice(0, 3).map(t => t.id).join(', ')}`);
       resolve(tweets);
     } catch (error) {
       console.error('Error getting tweets from Firestore:', error);

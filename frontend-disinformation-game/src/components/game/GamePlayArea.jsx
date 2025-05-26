@@ -20,6 +20,17 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
     }
   };
   
+  // Create a wrapper for handleModeration that also clears the selected tweet
+  const handleTweetModeration = (messageId, action) => {
+    // Call the original handleModeration
+    handleModeration(messageId, action);
+    
+    // Close the panel by clearing selected tweet when approving or flagging
+    if (action === "approve" || action === "flag") {
+      setSelectedTweet(null);
+    }
+  };
+  
   return (
     <div className="relative w-full max-w-7xl mx-auto">
       {/* Main container */}
@@ -49,7 +60,7 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
                         clickable={true}
                         onClick={() => handleTweetSelect(message)}
                         isExpanded={selectedTweet && selectedTweet.id === message.id}
-                        onModerate={handleModeration}
+                        onModerate={handleTweetModeration} 
                       />
                     </div>
                   ))
@@ -68,13 +79,13 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
           >
             <FixedTweetPanel
               selectedTweet={selectedTweet}
-              onModerate={handleModeration}
+              onModerate={handleTweetModeration}
               factCheckResult={selectedTweet ? factCheckResults[selectedTweet.id] : null}
               loading={loading}
               factChecksRemaining={factChecksRemaining}
               isVisible={!!selectedTweet}
-              showButtons={true}  // New prop to show action buttons
-              hideButtons={false} // Ensure buttons are not hidden
+              showButtons={true}
+              hideButtons={false}
             />
           </div>
         )}
@@ -85,7 +96,7 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
         <div className="game-timer rounded-full bg-[#123C6D] px-4 py-2 shadow-lg border border-[#4DA6FF]/40 text-white">
           <p className="text-center font-bold">
             Time: {Math.floor(timeRemaining / 60000)}:{String(Math.floor((timeRemaining % 60000) / 1000)).padStart(2, '0')} | 
-            Score: ${score}
+            Score: {score}
           </p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import AuthModal from "../auth/AuthModal";
 import Header from "./Header";
 import Background from "./Background";
 import AnimatedStyles from "./AnimatedStyles";
+import Leaderboard from "./Leaderboard";
 
 function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, handleGameReset, showAuthModal }) {
   const location = useLocation();
@@ -14,6 +15,7 @@ function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, han
   const [isGameOver, setIsGameOver] = useState(false);
   const [liveScore, setLiveScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [totalMoney, setTotalMoney] = useState(0);
 
   const formatTime = (ms) => {
     const min = Math.floor(Number(ms) / 60000)
@@ -29,30 +31,23 @@ function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, han
   const handleFullGameReset = () => {
     // First call the original reset function to update the game key
     handleGameReset();
-    
+
     // Then explicitly reset the game state flags to show the moderation panel
     setIsPlayingGame(false);
     setIsGameOver(false);
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative flex min-h-screen flex-col overflow-hidden">
       {/* Animated Background */}
       <Background />
 
       {/* Header */}
-      <Header 
-        user={user} 
-        timeLeft={timeLeft} 
-        liveScore={liveScore} 
-        formatTime={formatTime} 
-        isVisible={isPlayingGame} 
-        handleLogout={handleLogout} 
-        toggleAuthModal={toggleAuthModal} 
-      />
+      <Header user={user} timeLeft={timeLeft} liveScore={totalMoney} formatTime={formatTime} isVisible={isPlayingGame} handleLogout={handleLogout} toggleAuthModal={toggleAuthModal} />
 
-      <div className="relative z-10 flex w-full items-center justify-center px-4 pt-24">
-        <div className="animate-fadeIn w-full max-w-7xl transform rounded-2xl border border-[#4DA6FF]/20 bg-[#123C6D]/80 p-8 text-white shadow-xl backdrop-blur-md transition-all duration-500">
+      <div className="relative z-10 flex flex-col items-center justify-center px-4 pt-24 pb-8">
+        {/* Main content box */}
+        <div className="animate-fadeIn mb-8 w-full max-w-7xl transform rounded-2xl border border-[#4DA6FF]/20 bg-[#123C6D]/80 p-8 text-white shadow-xl backdrop-blur-md transition-all duration-500">
           <header className="mb-6 flex items-center justify-between">
             {loading ? (
               <div className="flex items-center space-x-2">
@@ -75,26 +70,31 @@ function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, han
             <div className="flex flex-col gap-6 lg:flex-row">
               <div className={`${isHomePage && user && !isPlayingGame && !isGameOver ? "lg:w-2/3" : "w-full"}`}>
                 <Routes>
-                  <Route path="/" element={
-                    <ModeratorGame 
-                      key={gameKey} 
-                      onReset={handleFullGameReset} // Use our new wrapper function
-                      user={user} 
-                      onLogin={toggleAuthModal} 
-                      onGameStateChange={(isPlaying, gameOver) => {
-                        setIsPlayingGame(isPlaying);
-                        setIsGameOver(gameOver);
-                      }} 
-                      setLiveScore={setLiveScore} 
-                      setTimeLeft={setTimeLeft} 
-                    />
-                  } />
+                  <Route
+                    path="/"
+                    element={
+                      <ModeratorGame
+                        key={gameKey}
+                        onReset={handleFullGameReset}
+                        user={user}
+                        onLogin={toggleAuthModal}
+                        onGameStateChange={(isPlaying, gameOver) => {
+                          setIsPlayingGame(isPlaying);
+                          setIsGameOver(gameOver);
+                        }}
+                        setLiveScore={setTotalMoney}
+                        setTimeLeft={setTimeLeft}
+                      />
+                    }
+                  />
                   <Route path="/admin-moderation" element={user ? <ModerationInterface user={user} /> : <Navigate to="/" />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
                 </Routes>
               </div>
 
               {isHomePage && user && !isPlayingGame && !isGameOver && (
-                <div className="animate-fadeInUp lg:w-1/3">
+                <div className="animate-fadeInUp flex flex-col gap-6 lg:w-1/3">
+                  {/* Moderation Panel */}
                   <div className="rounded-lg border border-[#4DA6FF]/30 bg-gradient-to-r from-[#123C6D]/90 to-[#1a4b82]/90 p-6 text-white shadow-lg">
                     <div className="mb-4 flex items-center space-x-3">
                       <div className="animate-pulse text-[#4DA6FF]">
@@ -122,6 +122,11 @@ function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, han
               )}
             </div>
           </main>
+        </div>
+
+        {/* Global leaderboard that always appears below the main content */}
+        <div className="animate-fadeIn w-full max-w-7xl mt-20">
+          <Leaderboard currentUserId={user?.uid} />
         </div>
       </div>
 

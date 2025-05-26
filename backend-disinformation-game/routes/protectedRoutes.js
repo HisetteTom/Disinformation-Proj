@@ -104,47 +104,60 @@ router.get("/money", async (req, res) => {
 router.get('/tweets', async (req, res) => {
   try {
     const userId = req.user.userId;
-    // Pass the userId to filter out correctly answered tweets
-    const tweetsRef = adminDb.collection('tweets');
     
-    // First get unclassified tweets
-    const unclassifiedSnapshot = await tweetsRef
-      .where('is_disinfo', '==', '')
-      .limit(100)
-      .get();
-    
-    // Get user's correctly answered tweets
+    // Get user's correctly answered tweets to filter them out
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : {};
     const alreadyAnsweredTweets = userData.correctlyAnsweredTweets || [];
     
-    let tweets = [];
-    unclassifiedSnapshot.forEach(doc => {
+    console.log(`User ${userId} has already answered ${alreadyAnsweredTweets.length} tweets`);
+    console.log(`Already answered tweet IDs:`, alreadyAnsweredTweets.slice(0, 5)); // Show first 5 for debugging
+    
+    const tweetsRef = adminDb.collection('tweets');
+    
+    // Get all tweets from Firestore
+    const allTweetsSnapshot = await tweetsRef.limit(500).get(); // Limit to avoid huge queries
+    
+    let availableTweets = [];
+    allTweetsSnapshot.forEach(doc => {
+      const tweetData = doc.data();
+      
       // Skip tweets the user has already correctly answered
+      // Use the Firestore document ID for comparison
       if (!alreadyAnsweredTweets.includes(doc.id)) {
-        tweets.push({ id: doc.id, ...doc.data() });
+        availableTweets.push({ 
+          id: doc.id, // Use Firestore document ID
+          ...tweetData 
+        });
+      } else {
+        console.log(`Skipping already answered tweet: ${doc.id}`);
       }
     });
     
-    // If we have fewer than 100 unclassified tweets, add some classified ones
-    if (tweets.length < 100) {
-      const classifiedSnapshot = await tweetsRef
-        .where('is_disinfo', 'in', ['true', 'false'])
-        .limit(100 - tweets.length)
-        .get();
-      
-      classifiedSnapshot.forEach(doc => {
-        // Skip tweets the user has already correctly answered
-        if (!alreadyAnsweredTweets.includes(doc.id)) {
-          tweets.push({ id: doc.id, ...doc.data() });
-        }
-      });
-    }
+    // Prioritize unclassified tweets first
+    const unclassifiedTweets = availableTweets.filter(tweet => 
+      !tweet.is_disinfo || tweet.is_disinfo === ''
+    );
     
-    console.log(`Returning ${tweets.length} tweets for moderation (excluded ${alreadyAnsweredTweets.length} already answered)`);
-    res.json(tweets);
+    const classifiedTweets = availableTweets.filter(tweet => 
+      tweet.is_disinfo === 'true' || tweet.is_disinfo === 'false'
+    );
+    
+    // Combine with unclassified first, then classified
+    let finalTweets = [...unclassifiedTweets, ...classifiedTweets];
+    
+    // Shuffle the final list to avoid predictable order
+    finalTweets = finalTweets.sort(() => Math.random() - 0.5);
+    
+    // Limit to 100 tweets maximum
+    finalTweets = finalTweets.slice(0, 100);
+    
+    console.log(`Returning ${finalTweets.length} tweets for game (${unclassifiedTweets.length} unclassified, ${Math.min(classifiedTweets.length, 100 - unclassifiedTweets.length)} classified)`);
+    console.log(`Excluded ${alreadyAnsweredTweets.length} already answered tweets`);
+    
+    res.json(finalTweets);
   } catch (error) {
-    console.error('Error fetching tweets for moderation:', error);
+    console.error('Error fetching tweets for game:', error);
     res.status(500).json({ error: 'Failed to fetch tweets' });
   }
 });
@@ -245,8 +258,6 @@ router.post('/answered-tweets', async (req, res) => {
     console.log(`DEBUG: Received request to save ${tweetIds?.length} answered tweets for user ${userId}`);
     console.log(`DEBUG: Tweet IDs:`, tweetIds);
     
-    console.log(`Received request to save ${tweetIds?.length} answered tweets for user ${userId}`);
-    
     if (!Array.isArray(tweetIds)) {
       console.error("Invalid tweet IDs format:", tweetIds);
       return res.status(400).json({ error: 'Invalid tweet IDs format' });
@@ -256,6 +267,21 @@ router.post('/answered-tweets', async (req, res) => {
       console.log("Empty tweet IDs array, nothing to save");
       return res.json({ success: true, message: 'No tweets to save', count: 0 });
     }
+    
+    // Validate that all tweet IDs are strings and not null/undefined
+    const validTweetIds = tweetIds.filter(id => 
+      id !== null && 
+      id !== undefined && 
+      typeof id === 'string' && 
+      id.trim() !== ''
+    );
+    
+    if (validTweetIds.length !== tweetIds.length) {
+      console.log(`Filtered out ${tweetIds.length - validTweetIds.length} invalid tweet IDs`);
+      console.log(`Invalid IDs:`, tweetIds.filter(id => !validTweetIds.includes(id)));
+    }
+    
+    console.log(`Processing ${validTweetIds.length} valid tweet IDs`);
     
     // Get existing answered tweets for this user
     const userRef = adminDb.collection('users').doc(userId);
@@ -272,7 +298,7 @@ router.post('/answered-tweets', async (req, res) => {
     console.log(`User ${userId} has ${existingAnsweredTweets.length} existing answered tweets`);
     
     // Combine existing and new correctly answered tweets (remove duplicates)
-    const updatedAnsweredTweets = [...new Set([...existingAnsweredTweets, ...tweetIds])];
+    const updatedAnsweredTweets = [...new Set([...existingAnsweredTweets, ...validTweetIds])];
     
     console.log(`Saving ${updatedAnsweredTweets.length} total answered tweets (${updatedAnsweredTweets.length - existingAnsweredTweets.length} new)`);
     
@@ -286,11 +312,53 @@ router.post('/answered-tweets', async (req, res) => {
       success: true, 
       message: 'Correctly answered tweets saved',
       count: updatedAnsweredTweets.length,
-      newCount: updatedAnsweredTweets.length - existingAnsweredTweets.length
+      newCount: updatedAnsweredTweets.length - existingAnsweredTweets.length,
+      savedIds: validTweetIds
     });
   } catch (error) {
     console.error('Error saving correctly answered tweets:', error);
     res.status(500).json({ error: 'Failed to save answered tweets', message: error.message });
+  }
+});
+
+router.post("/reset-profile", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Reset user profile data
+    const userRef = adminDb.collection("users").doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Reset all user data to defaults
+    const resetData = {
+      money: 0,
+      upgrades: {},
+      correctlyAnsweredTweets: [],
+      lastUpdated: new Date().toISOString()
+    };
+
+    await userRef.update(resetData);
+
+    // Return the reset profile
+    const userData = userDoc.data();
+    const resetProfile = {
+      ...req.user,
+      money: 0,
+      upgrades: {},
+      correctlyAnsweredTweets: []
+    };
+
+    res.status(200).json({
+      message: "Profile reset successfully",
+      user: resetProfile,
+    });
+  } catch (error) {
+    console.error("Profile reset error:", error);
+    res.status(500).json({ message: "Server error resetting profile" });
   }
 });
 

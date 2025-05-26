@@ -90,7 +90,7 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
 
     // Calculate refresh interval based on feed speed
     // Speed 1 = 5000ms, Speed 2 = 3000ms, Speed 3 = 1000ms
-    const refreshInterval = feedSpeed === 1 ? 5000 : feedSpeed === 2 ? 3000 : 1000;
+    const refreshInterval = feedSpeed === 0.5 ? 10000 : feedSpeed === 1 ? 7000 : 4000;
 
     // Set up a new interval to add tweets periodically
     refreshTimerRef.current = setInterval(() => {
