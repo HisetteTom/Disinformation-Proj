@@ -89,8 +89,9 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
     }
 
     // Calculate refresh interval based on feed speed
-    // Speed 1 = 5000ms, Speed 2 = 3000ms, Speed 3 = 1000ms
     const refreshInterval = feedSpeed === 0.5 ? 10000 : feedSpeed === 1 ? 7000 : 4000;
+
+    console.log(`Starting tweet refresh with interval ${refreshInterval}ms, gameMessages length: ${gameMessages.length}, current index: ${messagesIndexRef.current}`);
 
     // Set up a new interval to add tweets periodically
     refreshTimerRef.current = setInterval(() => {
@@ -101,12 +102,16 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
 
       const messageIndex = messagesIndexRef.current;
       
+      console.log(`Tweet refresh tick - messageIndex: ${messageIndex}, gameMessages length: ${gameMessages.length}`);
+      
       if (messageIndex < gameMessages.length) {
         const newTweet = {
           ...gameMessages[messageIndex],
           isNew: true,
-          appearedAt: Date.now(), // Add timestamp for speed bonus calculation
+          appearedAt: Date.now(),
         };
+
+        console.log(`Adding tweet ${messageIndex}: ${newTweet.author}`);
 
         setMessageFeed(prevFeed => {
           // Add new tweet at the beginning of the feed
@@ -127,6 +132,9 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
             )
           );
         }, 600);
+      } else {
+        console.log("No more tweets to add, clearing refresh interval");
+        clearInterval(refreshTimerRef.current);
       }
     }, refreshInterval);
   };

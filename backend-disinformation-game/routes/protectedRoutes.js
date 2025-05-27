@@ -101,9 +101,11 @@ router.get("/money", async (req, res) => {
 });
 
 // Get tweets that need moderation (prioritize unclassified tweets)
+// Get tweets that need moderation (prioritize unclassified tweets)
 router.get('/tweets', async (req, res) => {
   try {
     const userId = req.user.userId;
+    const { hashtag } = req.query;
     
     // Get user's correctly answered tweets to filter them out
     const userDoc = await adminDb.collection('users').doc(userId).get();
@@ -111,79 +113,104 @@ router.get('/tweets', async (req, res) => {
     const alreadyAnsweredTweets = userData.correctlyAnsweredTweets || [];
     
     console.log(`User ${userId} has already answered ${alreadyAnsweredTweets.length} tweets`);
-    console.log(`Already answered tweet IDs:`, alreadyAnsweredTweets.slice(0, 5)); // Show first 5 for debugging
+    console.log(`Already answered tweet IDs:`, alreadyAnsweredTweets.slice(0, 5));
+    
+    if (hashtag) {
+      console.log(`Filtering tweets by hashtag: "${hashtag}"`);
+    }
     
     const tweetsRef = adminDb.collection('tweets');
-    
-    // Get all tweets from Firestore
-    const allTweetsSnapshot = await tweetsRef.limit(500).get(); // Limit to avoid huge queries
+    const allTweetsSnapshot = await tweetsRef.limit(500).get();
     
     let availableTweets = [];
+    let filteredOutCount = 0;
+    
     allTweetsSnapshot.forEach(doc => {
       const tweetData = doc.data();
       
-      // Skip tweets the user has already correctly answered
-      // Use the Firestore document ID for comparison
-      if (!alreadyAnsweredTweets.includes(doc.id)) {
-        availableTweets.push({ 
-          id: doc.id, // Use Firestore document ID
-          ...tweetData 
-        });
-      } else {
-        console.log(`Skipping already answered tweet: ${doc.id}`);
+      // Filter by hashtag if specified
+      if (hashtag) {
+        const tweetHashtags = tweetData.Hashtags || '';
+        const hashtagList = tweetHashtags.split(/[,;|#\s]+/)
+          .map(tag => tag.trim().toLowerCase())
+          .filter(tag => tag.length > 0);
+        
+        const hasMatchingHashtag = hashtagList.includes(hashtag.toLowerCase());
+        
+        if (!hasMatchingHashtag) {
+          console.log(`Skipping tweet ${doc.id} - hashtags: "${tweetHashtags}" doesn't contain "${hashtag}"`);
+          filteredOutCount++;
+          return;
+        } else {
+          console.log(`Including tweet ${doc.id} - hashtags: "${tweetHashtags}" contains "${hashtag}"`);
+        }
       }
+      
+      // Add all tweets that match hashtag filter (don't filter by answered tweets yet)
+      availableTweets.push({ 
+        id: doc.id,
+        ...tweetData 
+      });
     });
     
+    // Separate into new tweets (not answered) and answered tweets
+    const newTweets = availableTweets.filter(tweet => 
+      !alreadyAnsweredTweets.includes(tweet.id)
+    );
+    
+    const answeredTweets = availableTweets.filter(tweet => 
+      alreadyAnsweredTweets.includes(tweet.id)
+    );
+    
+    console.log(`Found ${newTweets.length} new tweets and ${answeredTweets.length} previously answered tweets`);
+    
+    // If we don't have enough new tweets, include some answered ones
+    let finalTweets = [...newTweets];
+    
+    if (finalTweets.length < 20) { // If less than 20 new tweets
+      console.log(`Only ${finalTweets.length} new tweets available. Adding some previously answered tweets for replay.`);
+      
+      // Add some answered tweets to make the game playable
+      const shuffledAnsweredTweets = answeredTweets.sort(() => Math.random() - 0.5);
+      const tweetsNeeded = Math.min(50 - finalTweets.length, shuffledAnsweredTweets.length);
+      finalTweets = [...finalTweets, ...shuffledAnsweredTweets.slice(0, tweetsNeeded)];
+      
+      console.log(`Added ${tweetsNeeded} previously answered tweets for replay`);
+    }
+    
     // Prioritize unclassified tweets first
-    const unclassifiedTweets = availableTweets.filter(tweet => 
+    const unclassifiedTweets = finalTweets.filter(tweet => 
       !tweet.is_disinfo || tweet.is_disinfo === ''
     );
     
-    const classifiedTweets = availableTweets.filter(tweet => 
+    const classifiedTweets = finalTweets.filter(tweet => 
       tweet.is_disinfo === 'true' || tweet.is_disinfo === 'false'
     );
     
     // Combine with unclassified first, then classified
-    let finalTweets = [...unclassifiedTweets, ...classifiedTweets];
+    let gameTweets = [...unclassifiedTweets, ...classifiedTweets];
     
-    // Shuffle the final list to avoid predictable order
-    finalTweets = finalTweets.sort(() => Math.random() - 0.5);
+    // Shuffle the final list
+    gameTweets = gameTweets.sort(() => Math.random() - 0.5);
     
     // Limit to 100 tweets maximum
-    finalTweets = finalTweets.slice(0, 100);
+    gameTweets = gameTweets.slice(0, 100);
     
-    console.log(`Returning ${finalTweets.length} tweets for game (${unclassifiedTweets.length} unclassified, ${Math.min(classifiedTweets.length, 100 - unclassifiedTweets.length)} classified)`);
-    console.log(`Excluded ${alreadyAnsweredTweets.length} already answered tweets`);
+    const filterText = hashtag ? ` (filtered by hashtag: ${hashtag})` : '';
+    console.log(`Returning ${gameTweets.length} tweets for game${filterText} (${unclassifiedTweets.length} unclassified, ${Math.min(classifiedTweets.length, 100 - unclassifiedTweets.length)} classified)`);
+    console.log(`Included ${newTweets.filter(t => gameTweets.some(gt => gt.id === t.id)).length} new tweets and ${answeredTweets.filter(t => gameTweets.some(gt => gt.id === t.id)).length} replay tweets`);
     
-    res.json(finalTweets);
+    if (hashtag && gameTweets.length > 0) {
+      console.log(`Sample hashtags from returned tweets:`);
+      gameTweets.slice(0, 3).forEach((tweet, i) => {
+        console.log(`  Tweet ${i}: "${tweet.Hashtags}"`);
+      });
+    }
+    
+    res.json(gameTweets);
   } catch (error) {
     console.error('Error fetching tweets for game:', error);
     res.status(500).json({ error: 'Failed to fetch tweets' });
-  }
-});
-
-// Update tweet classification
-router.post('/classify', async (req, res) => {
-  try {
-    const { tweetId, isDisinfo } = req.body;
-    
-    if (!tweetId) {
-      return res.status(400).json({ error: 'Tweet ID is required' });
-    }
-    
-    // Convert to string format as stored in Firestore
-    const isDisinfoValue = isDisinfo ? 'true' : 'false';
-    
-    const tweetRef = adminDb.collection('tweets').doc(tweetId);
-    await tweetRef.update({ 
-      is_disinfo: isDisinfoValue,
-      moderated_at: new Date().toISOString()
-    });
-    
-    res.json({ success: true, message: `Tweet ${tweetId} marked as ${isDisinfoValue}` });
-  } catch (error) {
-    console.error('Error updating tweet classification:', error);
-    res.status(500).json({ error: 'Failed to update classification' });
   }
 });
 
@@ -206,21 +233,29 @@ router.post('/delete', async (req, res) => {
     
     const tweetData = tweetDoc.data();
     
-    // Delete profile pic if exists
+    // Delete profile pic if exists - with proper error handling
     if (tweetData.Profile_Pic && tweetData.Profile_Pic.includes('gs://')) {
       try {
         const profilePicPath = tweetData.Profile_Pic.replace('gs://', '');
         const [bucketName, ...objectPath] = profilePicPath.split('/');
         const bucket = storage.bucket(bucketName);
         const file = bucket.file(objectPath.join('/'));
-        await file.delete();
-        console.log(`Deleted profile pic: ${profilePicPath}`);
+        
+        // Check if file exists before trying to delete
+        const [exists] = await file.exists();
+        if (exists) {
+          await file.delete();
+          console.log(`Deleted profile pic: ${profilePicPath}`);
+        } else {
+          console.log(`Profile pic not found, skipping: ${profilePicPath}`);
+        }
       } catch (profileError) {
-        console.error(`Error deleting profile pic: ${profileError}`);
+        console.error(`Error deleting profile pic: ${profileError.message}`);
+        // Don't throw the error, just log it and continue
       }
     }
     
-    // Delete media files if they exist
+    // Delete media files if they exist - with proper error handling
     if (tweetData.Media_Files) {
       const mediaFiles = tweetData.Media_Files.split('|');
       
@@ -231,10 +266,18 @@ router.post('/delete', async (req, res) => {
             const [bucketName, ...objectPath] = mediaPath.split('/');
             const bucket = storage.bucket(bucketName);
             const file = bucket.file(objectPath.join('/'));
-            await file.delete();
-            console.log(`Deleted media: ${mediaPath}`);
+            
+            // Check if file exists before trying to delete
+            const [exists] = await file.exists();
+            if (exists) {
+              await file.delete();
+              console.log(`Deleted media: ${mediaPath}`);
+            } else {
+              console.log(`Media file not found, skipping: ${mediaPath}`);
+            }
           } catch (mediaError) {
-            console.error(`Error deleting media file: ${mediaError}`);
+            console.error(`Error deleting media file: ${mediaError.message}`);
+            // Don't throw the error, just log it and continue
           }
         }
       }
@@ -243,10 +286,14 @@ router.post('/delete', async (req, res) => {
     // Finally delete the tweet document from Firestore
     await tweetRef.delete();
     
-    res.json({ success: true, message: `Tweet ${tweetId} and associated media deleted` });
+    res.json({ 
+      success: true, 
+      message: `Tweet ${tweetId} deleted successfully`,
+      note: 'Some associated media files may not have existed and were skipped'
+    });
   } catch (error) {
     console.error('Error deleting tweet:', error);
-    res.status(500).json({ error: 'Failed to delete tweet' });
+    res.status(500).json({ error: 'Failed to delete tweet', details: error.message });
   }
 });
 
@@ -359,6 +406,43 @@ router.post("/reset-profile", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Profile reset error:", error);
     res.status(500).json({ message: "Server error resetting profile" });
+  }
+});
+
+router.get('/hashtag-stats', async (req, res) => {
+  try {
+    const tweetsRef = adminDb.collection('tweets');
+    const allTweetsSnapshot = await tweetsRef.get();
+    
+    const hashtagCounts = {};
+    
+    allTweetsSnapshot.forEach(doc => {
+      const tweetData = doc.data();
+      const hashtags = tweetData.Hashtags || '';
+      
+      if (hashtags) {
+        // Split hashtags by common delimiters and clean them
+        const hashtagList = hashtags.split(/[,;|]/).map(tag => tag.trim().toLowerCase()).filter(tag => tag.length > 0);
+        
+        hashtagList.forEach(hashtag => {
+          if (hashtagCounts[hashtag]) {
+            hashtagCounts[hashtag]++;
+          } else {
+            hashtagCounts[hashtag] = 1;
+          }
+        });
+      }
+    });
+    
+    // Sort hashtags by count (descending)
+    const sortedHashtags = Object.entries(hashtagCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 20); // Return top 20 hashtags
+    
+    res.json(sortedHashtags.map(([hashtag, count]) => ({ hashtag, count })));
+  } catch (error) {
+    console.error('Error fetching hashtag stats:', error);
+    res.status(500).json({ error: 'Failed to fetch hashtag statistics' });
   }
 });
 

@@ -123,15 +123,16 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
       >
         <div className="mb-6 flex items-center justify-between border-b border-[#4DA6FF]/30 pb-4">
           <div>
-            <h2 className="text-shadow text-2xl font-bold text-white">Moderator Upgrades</h2>
-            <p className="text-[#4DA6FF]/80">Enhance your detection capabilities</p>
+            <h2 className="text-shadow text-2xl font-bold text-white">Truth Moderator Upgrades</h2>
+            <p className="text-[#4DA6FF]/80">Enhance your truth detection capabilities</p>
           </div>
-          <div className="rounded-full border border-[#4DA6FF]/50 bg-[#4DA6FF]/20 px-4 py-2 text-xl font-bold text-white backdrop-blur-md backdrop-filter">
+          <div className="rounded-full border border-[#FF6B35]/50 bg-[#FF6B35]/20 px-4 py-2 text-xl font-bold text-white backdrop-blur-md backdrop-filter">
             <span className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {/* Same Truth Token icon from Header */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h18v4H14v14h-4V7H3V3z" />
               </svg>
-              ${money}
+              <span className="text-[#FF6B35]">Truth tokens: </span>{money}
             </span>
           </div>
         </div>
@@ -178,8 +179,17 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div className="font-bold text-white">
-                  {upgrade.currentLevel < upgrade.maxLevel ? `$${upgrade.nextPrice}` : "Maxed Out"}
+                <div className="font-bold text-white flex items-center">
+                  {upgrade.currentLevel < upgrade.maxLevel ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 3h18v4H14v14h-4V7H3V3z" />
+                      </svg>
+                      {upgrade.nextPrice}
+                    </>
+                  ) : (
+                    "Maxed Out"
+                  )}
                 </div>
                 {upgrade.currentLevel < upgrade.maxLevel && (
                   <button 
@@ -226,7 +236,7 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            <span>Close Shop</span>
+            <span>Close Truth Shop</span>
           </button>
         </div>
       </div>

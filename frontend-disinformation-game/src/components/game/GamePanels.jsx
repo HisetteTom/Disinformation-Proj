@@ -9,8 +9,7 @@ export function LoadingState() {
   );
 }
 
-// UPDATED: Add speedBonusScore parameter and use it instead of scoreBreakdown.speedBonus
-export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, speedBonusScore, user, authUser, onProfileUpdate }) {
+export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, timeScore, speedBonusScore, user, authUser, onProfileUpdate, selectedHashtag }) {
   var [shop, setShop] = useState(false);
 
   // Calculate the reduced penalties based on the upgrade level
@@ -35,7 +34,24 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
           </svg>
         </div>
         <h1 className="text-shadow text-3xl font-bold text-white">Game Over!</h1>
-        <h2 className="mb-2 text-xl font-bold text-[#4DA6FF]">{score}</h2>
+        
+        {/* Show hashtag mode indicator if applicable */}
+        {selectedHashtag && (
+          <div className="mb-2 flex items-center justify-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+            <span className="text-[#4DA6FF] font-semibold text-lg">{selectedHashtag}</span>
+          </div>
+        )}
+
+        <div className="mb-2 flex items-center justify-center space-x-2">
+          {/* Truth Token icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h18v4H14v14h-4V7H3V3z" />
+          </svg>
+          <h2 className="text-xl font-bold text-[#FF6B35]">{score} Truth tokens earned</h2>
+        </div>
         <p className="mb-2 text-white/80">
           <span className="mr-1 inline-flex items-center rounded-md border border-[#4DA6FF]/40 bg-[#123C6D] px-2 py-1">
             <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,6 +59,14 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
             </svg>
             {messagesHandled} tweets flagged
           </span>
+          {selectedHashtag && (
+            <span className="ml-2 inline-flex items-center rounded-md border border-[#4DA6FF]/40 bg-[#4DA6FF]/10 px-2 py-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+              </svg>
+              {selectedHashtag}
+            </span>
+          )}
         </p>
       </div>
 
@@ -51,7 +75,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          Score Breakdown:
+          Truth Token Breakdown:
         </h3>
         <ul className="space-y-2 text-sm">
           {scoreBreakdown.correctFlags > 0 && (
@@ -59,7 +83,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Correct flags: +{scoreBreakdown.correctFlags * 10} points ({scoreBreakdown.correctFlags} tweets)
+              Correct flags: +{scoreBreakdown.correctFlags * 10} tokens ({scoreBreakdown.correctFlags} tweets)
             </li>
           )}
 
@@ -68,7 +92,7 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Incorrect flags: -{(scoreBreakdown.incorrectFlags * parseFloat(penaltyPerMistake)).toFixed(1)} points ({scoreBreakdown.incorrectFlags} tweets)
+              Incorrect flags: -{(scoreBreakdown.incorrectFlags * parseFloat(penaltyPerMistake)).toFixed(1)} tokens ({scoreBreakdown.incorrectFlags} tweets)
               {penaltyPerMistake !== "5" && <span className="ml-1 text-xs">(Shield active: -{penaltyPerMistake} per mistake)</span>}
             </li>
           )}
@@ -78,17 +102,16 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              Missed misinformation: -{(scoreBreakdown.missedMisinformation * 2.5).toFixed(1)} points ({scoreBreakdown.missedMisinformation} tweets)
+              Missed misinformation: -{(scoreBreakdown.missedMisinformation * 5).toFixed(1)} tokens ({scoreBreakdown.missedMisinformation} tweets)
             </li>
           )}
 
-          {/* UPDATED: Use speedBonusScore instead of scoreBreakdown.speedBonus */}
           {speedBonusScore > 0 && (
             <li className="flex items-center rounded-md border border-blue-600/30 bg-blue-600/20 px-2 py-1 text-white">
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Speed bonus: +{speedBonusScore} points
+              Speed bonus: +{speedBonusScore} tokens
               {user?.upgrades?.speed_multiplier && <span className="ml-1 text-xs">(Quick Reflexes active: +{user.upgrades.speed_multiplier * 25}%)</span>}
             </li>
           )}
@@ -98,12 +121,28 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Time bonus: +{timeScore} points
+              Time bonus: +{timeScore} tokens
               {user?.upgrades?.time_bonus && <span className="ml-1 text-xs">(Time Manager active: +{user.upgrades.time_bonus * 20}%)</span>}
             </li>
           )}
         </ul>
       </div>
+
+      {/* Game mode summary */}
+      {selectedHashtag && (
+        <div className="mb-6 rounded-lg border border-[#4DA6FF]/20 bg-[#4DA6FF]/10 p-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#4DA6FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h4 className="font-semibold text-white">Hashtag Mode Summary</h4>
+          </div>
+          <p className="text-sm text-white/80">
+            You focused on moderating content related to <span className="font-bold text-[#4DA6FF]">#{selectedHashtag}</span>. 
+            This specialized approach helps you become an expert in identifying misinformation within specific topics.
+          </p>
+        </div>
+      )}
 
       <div className="flex justify-center gap-4">
         <button onClick={onPlayAgain} className="flex transform items-center rounded-lg bg-[#4DA6FF] px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-[#4DA6FF]/80 hover:shadow-lg">
@@ -112,11 +151,12 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
           </svg>
           Back to Home
         </button>
-        <button onClick={() => setShop(true)} className="flex transform items-center rounded-lg bg-green-500 px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-green-500/80 hover:shadow-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <button onClick={() => setShop(true)} className="flex transform items-center rounded-lg bg-[#FF6B35]/20 px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-[#FF6B35]/30 border border-[#FF6B35]/30 hover:border-[#FF6B35]/50">
+          {/* Truth Token icon instead of dollar sign */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h18v4H14v14h-4V7H3V3z" />
           </svg>
-          Upgrade Shop
+          Truth Shop
         </button>
       </div>
       {shop && <MenuUpgrade user={authUser} userProfile={user} Score={score} Diplay={() => setShop(false)} onProfileUpdate={onProfileUpdate} />}
@@ -218,7 +258,7 @@ function FactResults({ results, onModerate, messageId, largerArticles }) {
                 <a href={result.claimReview[0].url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
                   View fact check →
                 </a>
-              </div>
+                </div>
             )}
           </div>
         ))}

@@ -5,14 +5,45 @@ import { getAuthToken } from "./authService";
  * @returns {Promise<Array>} The fetched tweets
  * @throws {Error} If the API request fails
  */
-export async function fetchTweets() {
+export async function fetchTweets(hashtag = null) {
   const token = await getAuthToken();
   
   if (!token) {
     throw new Error("You must be logged in to access the moderation panel");
   }
   
-  const response = await fetch("http://localhost:3001/api/protected/tweets", {
+  let url = "http://localhost:3001/api/protected/tweets";
+  if (hashtag) {
+    url += `?hashtag=${encodeURIComponent(hashtag)}`;
+  }
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API returned status: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data;
+}
+
+/**
+ * Fetch hashtag statistics
+ * @returns {Promise<Array>} Array of hashtag objects with counts
+ * @throws {Error} If the API request fails
+ */
+export async function fetchHashtagStats() {
+  const token = await getAuthToken();
+  
+  if (!token) {
+    throw new Error("You must be logged in to access hashtag statistics");
+  }
+  
+  const response = await fetch("http://localhost:3001/api/protected/hashtag-stats", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
