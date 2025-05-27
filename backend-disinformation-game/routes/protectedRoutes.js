@@ -100,8 +100,6 @@ router.get("/money", async (req, res) => {
   }
 });
 
-// Get tweets that need moderation (prioritize unclassified tweets)
-// Get tweets that need moderation (prioritize unclassified tweets)
 router.get('/tweets', async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -443,6 +441,48 @@ router.get('/hashtag-stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching hashtag stats:', error);
     res.status(500).json({ error: 'Failed to fetch hashtag statistics' });
+  }
+});
+
+// Add this route after the delete route
+router.post('/classify', async (req, res) => {
+  try {
+    const { tweetId, isDisinfo } = req.body;
+    
+    if (!tweetId) {
+      return res.status(400).json({ error: 'Tweet ID is required' });
+    }
+    
+    if (typeof isDisinfo !== 'boolean') {
+      return res.status(400).json({ error: 'isDisinfo must be a boolean value' });
+    }
+    
+    // Get tweet reference
+    const tweetRef = adminDb.collection('tweets').doc(tweetId);
+    const tweetDoc = await tweetRef.get();
+    
+    if (!tweetDoc.exists) {
+      return res.status(404).json({ error: 'Tweet not found' });
+    }
+    
+    // Update the tweet's classification
+    await tweetRef.update({
+      is_disinfo: isDisinfo.toString(), // Store as string to match existing data format
+      classified_at: new Date().toISOString(),
+      classified_by: req.user.userId
+    });
+    
+    console.log(`Tweet ${tweetId} classified as ${isDisinfo ? 'disinformation' : 'not disinformation'} by user ${req.user.userId}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Tweet classified as ${isDisinfo ? 'disinformation' : 'not disinformation'}`,
+      tweetId,
+      classification: isDisinfo
+    });
+  } catch (error) {
+    console.error('Error classifying tweet:', error);
+    res.status(500).json({ error: 'Failed to classify tweet', details: error.message });
   }
 });
 
