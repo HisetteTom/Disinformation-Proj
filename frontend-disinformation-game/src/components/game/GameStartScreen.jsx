@@ -18,12 +18,12 @@ function GameStartScreen({ user, onLogin, onStartGame, onStartHashtagMode }) {
           In today's digital landscape, <span className="font-semibold">misinformation spreads faster than ever</span>. Your mission is to identify and flag misleading tweets before they go viral.
         </p>
         <p className="mb-3 text-white/90">
-          You have <span className="font-bold text-[#4DA6FF]">3 minutes</span> to review as many tweets as possible. Correctly flag misinformation to earn points, but be careful - incorrect flags will cost you!
+          You have <span className="font-bold text-[#4DA6FF]">2 minutes</span> to review as many tweets as possible. Correctly flag misinformation to earn points, but be careful - incorrect flags will cost you!
         </p>
         <p className="text-white/90">
           <span className="inline-flex items-center bg-[#123C6D] px-2 py-1 rounded-md mr-1 border border-[#4DA6FF]/40">
             <span className="mr-1">🔍</span>
-            <span className="font-bold text-[#4DA6FF]">5 fact checks</span> 
+            <span className="font-bold text-[#4DA6FF]"> Fact checks</span> 
           </span>
           are available to help with difficult decisions.
         </p>

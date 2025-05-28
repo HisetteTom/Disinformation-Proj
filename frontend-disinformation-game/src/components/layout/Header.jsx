@@ -173,7 +173,7 @@ function Header({ user, timeLeft, liveScore, formatTime, isVisible, handleLogout
               <div className="animate-pulse">
                 <img src="/img/logo_game.png" alt="DisInfo Game Logo" className="h-10 w-10" />
               </div>
-              <span className="text-shadow text-xl font-bold tracking-tight text-white transition-all group-hover:text-[#4DA6FF]">DisInfo Game</span>
+              <span className="text-shadow text-xl font-bold tracking-tight text-white transition-all group-hover:text-[#4DA6FF]">Truth Tellers</span>
             </Link>
 
             {/* Center - Game stats */}
