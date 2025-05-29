@@ -2,6 +2,8 @@ import os
 import time
 import pyautogui
 
+#NOT USED ANYMORE, ON THE WEBSITE
+
 def view_image(image_path):
     """Display an image and automatically focus back to console"""
     # Check if we need to adjust the path to look in parent directory

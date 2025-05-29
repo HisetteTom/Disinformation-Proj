@@ -77,7 +77,6 @@ class GCPStorage:
             # Extract file extension
             _, file_extension = os.path.splitext(local_path)
             
-            # Simple flat structure
             file_name = f"profile_{username}{file_extension}"
             blob_path = f"users/{username}/{file_name}"
             
@@ -85,9 +84,6 @@ class GCPStorage:
             bucket = self.storage_client.bucket(self.buckets['profiles'])
             blob = bucket.blob(blob_path)
             blob.upload_from_filename(local_path)
-            
-            # Set public URL for access
-            #blob.make_public()
             
             print(f"Uploaded profile picture for {username}")
             return blob.public_url
@@ -105,7 +101,6 @@ class GCPStorage:
             # Extract file extension
             _, file_extension = os.path.splitext(local_path)
             
-            # Use a simpler structure
             file_name = f"tweet_{tweet_id}_media_{index}{file_extension}"
             blob_path = f"media/{tweet_id}/{file_name}"
             
@@ -114,8 +109,6 @@ class GCPStorage:
             blob = bucket.blob(blob_path)
             blob.upload_from_filename(local_path)
             
-            # Set public URL for access
-            #blob.make_public()
             
             print(f"Uploaded media file for tweet {tweet_id}")
             return blob.public_url
@@ -166,7 +159,7 @@ class GCPStorage:
     def load_tweets_dataframe(self, filename):
         """Load tweets DataFrame from GCP Storage or Firestore."""
         try:
-            # First try to get from Storage for backward compatibility
+            # First try to get from Storage 
             bucket = self.storage_client.bucket(self.buckets['data'])
             blob = bucket.blob(filename)
             
@@ -250,7 +243,6 @@ class GCPStorage:
             }
             file_extension = extension_map.get(content_type, '.jpg')
             
-            # Use a simpler structure
             file_name = f"tweet_{tweet_id}_media_{index}{file_extension}"
             blob_path = f"media/{tweet_id}/{file_name}"
             

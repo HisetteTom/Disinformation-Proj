@@ -86,13 +86,11 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
   // Get upgrade effects based on user profile
   const upgradeEffects = useUpgradeEffects(userProfile);
 
-  // Now we can use upgradeEffects in gameState
   const gameState = useGameState(onReset, upgradeEffects, user);
   gameState.user = user;
 
   const { gameMessages, messageFeed, currentMessage, factCheckResults, score, timeScore, speedBonusScore, messagesHandled, factChecksRemaining, isLoading, gameStarted, gameOver, timeRemaining, feedSpeed, changeFeedSpeed, isModalOpen, loading, gameTimerRef, refreshTimerRef, timeScoreTimerRef, messagesIndexRef, setGameStarted, setTimeRemaining, setMessageFeed, setFactCheckResults, setScore, setTimeScore, setMessagesHandled, setFactChecksRemaining, setGameOver } = gameState;
 
-  // Inside your ModeratorGame component - properly notify parent about game state
   useEffect(() => {
     if (gameOver) {
       onGameStateChange(false, true); // isPlaying=false, gameOver=true
@@ -298,12 +296,11 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
       refreshTimerRef,
       timeScoreTimerRef,
       GAME_DURATION,
-      startTweetRefreshWithTweets, // Use the custom refresher
+      startTweetRefreshWithTweets, 
       setGameOver,
       () => gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
     );
 
-    // Add the first tweet immediately - use loadedTweets directly
     if (loadedTweets.length > 0) {
       const firstTweet = {
         ...loadedTweets[0],
@@ -313,7 +310,7 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
 
       console.log("Adding first tweet immediately:", firstTweet.author);
       setMessageFeed([firstTweet]);
-      messagesIndexRef.current = 1; // Start from index 1 for the refresher
+      messagesIndexRef.current = 1; 
 
       setTimeout(() => {
         setMessageFeed((prev) => prev.map((msg) => ({ ...msg, isNew: false })));
@@ -334,14 +331,11 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
   const handleSelectHashtag = async (hashtag) => {
     console.log("Selected hashtag:", hashtag);
 
-    // Set the selected hashtag in game state
     gameState.setSelectedHashtag(hashtag);
 
-    // Change to loading state
     setGameMode("loading");
     setIsInitializing(true);
 
-    // Reset game state
     setScoreBreakdown({
       correctFlags: 0,
       incorrectFlags: 0,
@@ -354,7 +348,6 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
     const initialFactChecks = 5 + upgradeEffects.getFactChecksBonus();
     console.log(`Starting hashtag game (${hashtag}) with ${initialFactChecks} fact checks`);
 
-    // Load tweets with hashtag filter
     const loadedTweets = await gameState.loadTweets(hashtag);
 
     if (!loadedTweets || loadedTweets.length === 0) {
@@ -368,12 +361,10 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
 
     // Create a custom tweet refresher that uses loadedTweets directly
     const startTweetRefreshWithTweets = () => {
-      // Clear any existing timer
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
       }
 
-      // Calculate refresh interval based on feed speed
       const refreshInterval = feedSpeed === 0.5 ? 10000 : feedSpeed === 1 ? 7000 : 4000;
 
       console.log(`Starting hashtag tweet refresh with interval ${refreshInterval}ms, tweets length: ${loadedTweets.length}, current index: ${messagesIndexRef.current}`);
@@ -437,12 +428,11 @@ function ModeratorGame({ onReset, user, onLogin, onGameStateChange, setLiveScore
       refreshTimerRef,
       timeScoreTimerRef,
       GAME_DURATION,
-      startTweetRefreshWithTweets, // Use the custom refresher
+      startTweetRefreshWithTweets, 
       setGameOver,
       () => gameState.startTimeScoring(upgradeEffects.getTimeScoreBonus()),
     );
 
-    // Add the first tweet immediately - use loadedTweets directly
     if (loadedTweets.length > 0) {
       const firstTweet = {
         ...loadedTweets[0],

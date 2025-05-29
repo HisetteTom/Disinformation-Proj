@@ -9,8 +9,8 @@ function FixedTweetPanel({
   loading, 
   factChecksRemaining, 
   isVisible,
-  showButtons = true,  // Changed default to true
-  hideButtons = false  // Changed default to false
+  showButtons = true, 
+  hideButtons = false 
 }) {
   if (!selectedTweet) return null;
 

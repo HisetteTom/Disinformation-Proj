@@ -2,6 +2,8 @@ import os
 import csv
 import pandas as pd
 
+# NOT USED ANYMORE ON THE WEBSITE
+
 def select_csv_file():
     """Let user select a CSV file from the current directory"""
     csv_files = [f for f in os.listdir() if f.endswith('.csv')]

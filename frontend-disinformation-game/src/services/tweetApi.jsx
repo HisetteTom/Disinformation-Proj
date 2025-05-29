@@ -1,5 +1,6 @@
 import { getAuthToken } from "./authService";
 
+// fetchTweets function to retrieve tweets based on a hashtag
 export const fetchTweets = async (hashtag = null) => {
   const token = await getAuthToken();
   
@@ -25,6 +26,7 @@ export const fetchTweets = async (hashtag = null) => {
   return await response.json();
 };
 
+// fetchHashtagStats function to retrieve statistics for a specific hashtag
 export const fetchHashtagStats = async () => {
   const token = await getAuthToken();
   

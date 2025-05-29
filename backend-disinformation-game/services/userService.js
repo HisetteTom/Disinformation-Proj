@@ -28,8 +28,6 @@ async function registerUser(username, email, userId) {
         throw firestoreError;
       }
       
-      // We don't need to create Firebase Auth user - it's already created by frontend
-      // Just store additional user data in Firestore
       console.log(`REGISTRATION: Writing user data to Firestore for ${userId}`);
       try {
         await adminDb.collection('users').doc(userId).set({
@@ -59,7 +57,6 @@ async function registerUser(username, email, userId) {
         console.log(`REGISTRATION: Initial stats created`);
       } catch (statsError) {
         console.error('REGISTRATION: Firestore stats write error:', statsError);
-        // Don't throw here - the user is already created
       }
       
       console.log(`REGISTRATION: Successfully registered user with ID: ${userId}`);
@@ -83,9 +80,6 @@ async function registerUser(username, email, userId) {
  */
 async function loginUser(email, password) {
   try {
-    // We can't directly verify password with Firebase Admin
-    // This would be done on the client side with Firebase Auth
-    // Here we're just fetching the user data based on email
     
     const userRecord = await adminAuth.getUserByEmail(email);
     const uid = userRecord.uid;

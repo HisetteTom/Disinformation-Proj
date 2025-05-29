@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { fetchTweets } from "../services/tweetApi";
 import { parseTwitterDate } from "../utils/gameUtils";
 
-export const GAME_DURATION = 1 * 60 * 1000;
+export const GAME_DURATION =  90 * 1000;
 export const TIME_SCORE_INTERVAL = 2000;
 export const TIME_SCORE_AMOUNT = 5;
 export const INITIAL_TWEETS_COUNT = 5;
@@ -56,7 +56,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   useEffect(() => {
     const newTotalScore = Math.max(0, baseScore + timeScore + speedBonusScore - penaltiesApplied);
 
-    console.log(`🔄 SCORE RECALCULATION:`);
+    console.log(` SCORE RECALCULATION:`);
     console.log(`  - baseScore: ${baseScore}`);
     console.log(`  - timeScore: ${timeScore}`);
     console.log(`  - speedBonusScore: ${speedBonusScore}`);
@@ -68,7 +68,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   }, [baseScore, timeScore, speedBonusScore, penaltiesApplied]);
 
   const startTimeScoring = (upgradeBonus = 0) => {
-    console.log(`⏰ Starting time scoring with upgrade bonus: ${upgradeBonus}`);
+    console.log(` Starting time scoring with upgrade bonus: ${upgradeBonus}`);
 
     if (timeScoreTimerRef.current) {
       clearInterval(timeScoreTimerRef.current);
@@ -79,15 +79,14 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
       setTimeScore((prev) => {
         const increment = TIME_SCORE_AMOUNT * (1 + upgradeBonus);
         const newScore = Math.round(prev + increment);
-        console.log(`⏰ Time score increment: ${prev} + ${increment} = ${newScore}`);
+        console.log(` Time score increment: ${prev} + ${increment} = ${newScore}`);
         return newScore;
       });
     }, TIME_SCORE_INTERVAL);
   };
 
-  // CONSOLIDATED SCORING FUNCTIONS
   const addCorrectFlag = (points = 10) => {
-    console.log(`✅ CORRECT FLAG: Adding ${points} points to base score`);
+    console.log(` CORRECT FLAG: Adding ${points} points to base score`);
     setBaseScore((prev) => {
       const newScore = prev + points;
       console.log(`  - Previous base score: ${prev}`);
@@ -98,7 +97,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   };
 
   const addIncorrectFlag = (penalty = 5) => {
-    console.log(`❌ INCORRECT FLAG: Adding ${penalty} penalty`);
+    console.log(` INCORRECT FLAG: Adding ${penalty} penalty`);
     setPenaltiesApplied((prev) => {
       const newPenalty = prev + penalty;
       console.log(`  - Previous penalties: ${prev}`);
@@ -109,7 +108,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   };
 
   const addSpeedBonus = (bonus) => {
-    console.log(`⚡ SPEED BONUS: Adding ${bonus} points`);
+    console.log(` SPEED BONUS: Adding ${bonus} points`);
     setSpeedBonusScore((prev) => {
       const newScore = prev + bonus;
       console.log(`  - Previous speed bonus: ${prev}`);
@@ -119,7 +118,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   };
 
   const handleMessageModeration = (messageId, isCorrect, points = 10, penalty = 5) => {
-    console.log(`🎯 HANDLING MODERATION for message ${messageId}: ${isCorrect ? "CORRECT" : "INCORRECT"}`);
+    console.log(` HANDLING MODERATION for message ${messageId}: ${isCorrect ? "CORRECT" : "INCORRECT"}`);
 
     // Track this message as handled
     setHandledMessageIds((prev) => new Set([...prev, messageId]));
@@ -133,19 +132,19 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   };
 
   const calculateMissedMisinformationPenalty = () => {
-    console.log(`🏁 CALCULATING MISSED MISINFORMATION PENALTIES`);
+    console.log(` CALCULATING MISSED MISINFORMATION PENALTIES`);
 
     // Find all misinformation tweets that were shown but not handled
     const shownMisinformationTweets = messageFeed.filter((msg) => msg.isDisinfo);
     const missedMisinformation = shownMisinformationTweets.filter((msg) => !handledMessageIds.has(msg.id));
 
-    console.log(`📊 MISSED MISINFORMATION ANALYSIS:`);
+    console.log(` MISSED MISINFORMATION ANALYSIS:`);
     console.log(`  - Total shown misinformation tweets: ${shownMisinformationTweets.length}`);
     console.log(`  - Handled message IDs:`, Array.from(handledMessageIds));
     console.log(`  - Missed misinformation tweets: ${missedMisinformation.length}`);
 
     if (missedMisinformation.length > 0) {
-      console.log(`❌ Missed misinformation tweets:`);
+      console.log(` Missed misinformation tweets:`);
       missedMisinformation.forEach((tweet) => {
         console.log(`  - ID ${tweet.id}: "${tweet.content.substring(0, 50)}..."`);
       });
@@ -156,7 +155,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
       const penaltyPerMiss = Math.max(1, basePenaltyPerMiss - penaltyReduction);
       const totalMissedPenalty = missedMisinformation.length * penaltyPerMiss;
 
-      console.log(`💸 MISSED MISINFORMATION PENALTY CALCULATION:`);
+      console.log(` MISSED MISINFORMATION PENALTY CALCULATION:`);
       console.log(`  - Missed count: ${missedMisinformation.length}`);
       console.log(`  - Base penalty per miss: ${basePenaltyPerMiss}`);
       console.log(`  - Penalty reduction from upgrades: ${penaltyReduction}`);
@@ -195,7 +194,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
       selectedHashtag: selectedHashtag,
     };
 
-    console.log(`📊 FINAL GAME STATS:`, finalStats);
+    console.log(` FINAL GAME STATS:`, finalStats);
     return finalStats;
   };
 
@@ -233,7 +232,7 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
     setTimeRemaining(GAME_DURATION);
     setHandledMessageIds(new Set());
     setSelectedHashtag(null);
-    setIsLoading(false); // Reset to false to show welcome screen
+    setIsLoading(false);
     messagesIndexRef.current = 0;
   };
 
@@ -248,7 +247,6 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
       console.log(`Loaded ${tweetsData.length} tweets${hashtag ? ` for hashtag: ${hashtag}` : ""}`);
 
       const formattedTweets = tweetsData.map((tweet, index) => {
-        // Use the actual tweet ID if it exists, otherwise fall back to a generated ID
         let tweetId;
         if (tweet.id && tweet.id !== null && tweet.id !== undefined) {
           tweetId = tweet.id;
@@ -311,7 +309,6 @@ export function useGameState(onReset, upgradeEffects = null, user = null) {
   };
 
   return {
-    // State
     gameMessages,
     messageFeed,
     setMessageFeed,

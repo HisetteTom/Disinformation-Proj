@@ -1,5 +1,7 @@
 import os
 
+#DEBUG PURPOSES
+
 def list_profile_pics():
     # Path to profile pics directory
     profile_pics_dir = 'profile_pics'

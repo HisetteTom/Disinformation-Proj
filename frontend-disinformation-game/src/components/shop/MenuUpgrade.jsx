@@ -17,7 +17,7 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
       console.log("Using passed userProfile with money:", userProfile.money);
       setMoney(userProfile.money);
       setPlayerUpgrades(userProfile.upgrades || {});
-      return; // Skip the fetch
+      return; 
     }
 
     if (user) {
@@ -128,7 +128,6 @@ export function MenuUpgrade({ user, userProfile, Score, Diplay, onProfileUpdate 
           </div>
           <div className="rounded-full border border-[#FF6B35]/50 bg-[#FF6B35]/20 px-4 py-2 text-xl font-bold text-white backdrop-blur-md backdrop-filter">
             <span className="flex items-center">
-              {/* Same Truth Token icon from Header */}
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 3h18v4H14v14h-4V7H3V3z" />
               </svg>

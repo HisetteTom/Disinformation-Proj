@@ -109,7 +109,7 @@ export function createTweetRefresher(refreshTimerRef, feedSpeed, messagesIndexRe
           ...gameMessages[messageIndex],
           isNew: true,
           appearedAt: Date.now(),
-        };
+        }; 
 
         console.log(`Adding tweet ${messageIndex}: ${newTweet.author}`);
 

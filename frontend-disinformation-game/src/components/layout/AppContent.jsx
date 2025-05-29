@@ -124,7 +124,7 @@ function AppContent({ user, loading, handleLogout, toggleAuthModal, gameKey, han
           </main>
         </div>
 
-        {/* Global leaderboard that always appears below the main content */}
+        {/* Global leaderboard */}
         <div className="animate-fadeIn w-full max-w-7xl mt-20">
           <Leaderboard currentUserId={user?.uid} />
         </div>

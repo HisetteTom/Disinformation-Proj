@@ -49,7 +49,7 @@ function Header({ user, timeLeft, liveScore, formatTime, isVisible, handleLogout
     setTotalMoney(baseMoney + gameScore);
   }, [userBaseMoney, liveScore]);
 
-  // Format the money with $ symbol and commas
+  
   const formattedMoney = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -203,7 +203,6 @@ function Header({ user, timeLeft, liveScore, formatTime, isVisible, handleLogout
 
             {/* Right - User section */}
             <div className="flex items-center">
-              {/* Mobile game stats */}
               {isVisible && (
                 <div className="mr-3 flex space-x-3 md:hidden">
                   <div className="flex items-center justify-center">

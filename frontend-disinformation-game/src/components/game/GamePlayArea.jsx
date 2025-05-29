@@ -44,7 +44,6 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
             </div>
             
             <div className="flex flex-col items-center">
-              {/* Removed max-height and overflow to allow page scrolling instead */}
               <div className="space-y-6 w-full pr-2">
                 {messageFeed.length === 0 ? (
                   <p className="text-center text-[#4DA6FF]/80 italic">Waiting for tweets...</p>
@@ -91,7 +90,7 @@ function GamePlayArea({ timeRemaining, feedSpeed, changeFeedSpeed, score, messag
         )}
       </div>
 
-      {/* Game timer and score display (visible only on mobile) */}
+      {/* Game timer and score display */}
       <div className="fixed bottom-4 left-0 right-0 flex items-center justify-center md:hidden">
         <div className="game-timer rounded-full bg-[#123C6D] px-4 py-2 shadow-lg border border-[#4DA6FF]/40 text-white">
           <p className="text-center font-bold">

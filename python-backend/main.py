@@ -5,7 +5,6 @@ import aiohttp
 import re
 from configparser import ConfigParser
 from config import QUERY, MINIMUM_TWEETS
-# Import from our modules
 from text_utils import extract_links, print_tweet_structure
 from tweet_api import get_tweets
 from media_utils import download_media_to_memory, download_profile_to_memory
@@ -123,7 +122,7 @@ async def main():
 
                 # Download and directly upload profile picture to GCP
                 profile_pic_path = ""
-                if hasattr(tweet.user, 'profile_image_url'):  # FIXED: use profile_image_url
+                if hasattr(tweet.user, 'profile_image_url'): 
                     profile_pic_url = tweet.user.profile_image_url
                     # Get original size by removing _normal
                     profile_pic_url = profile_pic_url.replace('_normal', '') if profile_pic_url else None
@@ -147,7 +146,7 @@ async def main():
                 if hasattr(tweet, 'media') and tweet.media:
                     for i, media_item in enumerate(tweet.media):
                         try:
-                            # Get media URL - FIXED: use media_url
+                            # Get media URL 
                             media_url = None
                             if hasattr(media_item, 'media_url'):
                                 media_url = media_item.media_url

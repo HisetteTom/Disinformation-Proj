@@ -20,7 +20,7 @@ if (process.env.GCP_KEY_FILE) {
   });
 }
 
-// Bucket names (equivalent to container names in Azure)
+// Bucket names
 const bucketNames = {
   images: 'disinformation-game-images',
   profiles: 'disinformation-game-profiles',
@@ -52,7 +52,6 @@ async function getFileStream(bucketName, fileName) {
  * @returns {string} - Public URL for the file
  */
 function getFileUrl(bucketName, fileName) {
-  // Using your backend API as a proxy, similar to Azure approach
   return `http://localhost:3001/api/media/${bucketName}/${encodeURIComponent(fileName)}`;
 }
 

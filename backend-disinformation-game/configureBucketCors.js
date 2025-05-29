@@ -16,8 +16,8 @@ const buckets = [
 // Origins to allow
 const origins = [
   'http://localhost:5173',  // Vite dev server
-  'http://localhost:3000',  // React default port
-  'http://localhost:3001'   // Your backend server
+  'http://localhost:3000',  
+  'http://localhost:3001'   
 ];
 
 async function configureBucketCors() {

@@ -59,7 +59,7 @@ function ModerationInterface() {
   // Use our image preloader
   const { imagesStatus, preloadImages } = useImagePreloader();
   
-  // Get current tweet (must come after tweets state declaration)
+  // Get current tweet
   const currentTweet = tweets[currentIndex];
   
   // Define isLoadingMedia after imagesStatus is declared

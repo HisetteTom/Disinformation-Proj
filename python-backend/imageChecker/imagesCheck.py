@@ -2,6 +2,8 @@ import os
 import pandas as pd
 from PIL import Image
 
+# NOT USED ANYMORE ON THE WEBSITE
+
 # Import from our utility modules
 from file_utils import select_csv_file, delete_file_if_exists
 from image_utils import view_image, close_image_viewers

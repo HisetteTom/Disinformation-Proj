@@ -1,4 +1,3 @@
-// This should be changed to:
 const express = require('express');
 const { checkFact } = require('../services/factChecker');
 

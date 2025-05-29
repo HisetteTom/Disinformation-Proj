@@ -24,8 +24,6 @@ const extractTweetId = (path) => {
   return null;
 };
 
-// New improved getProfilePicSrc function
-// New improved getProfilePicSrc function
 const getProfilePicSrc = (profilePic) => {
   if (!profilePic) return null;
 
@@ -34,13 +32,11 @@ const getProfilePicSrc = (profilePic) => {
 
   // For GCP paths with gs:// prefix
   if (profilePic.startsWith("gs://")) {
-    // Convert gs:// URL to direct GCP URL - this works once CORS is properly set
+    // Convert gs:// URL to direct GCP URL
     const gsPath = profilePic.replace("gs://", "");
     const [bucketName, ...pathParts] = gsPath.split("/");
     const pathString = pathParts.join("/");
 
-    // Use direct approach via Vite proxy instead of CORS
-    // Route through Vite's proxy to avoid CORS issues
     return `/api/media/profiles/direct?bucket=${bucketName}&path=${encodeURIComponent(pathString)}`;
   }
 
@@ -104,7 +100,6 @@ const getMediaSrc = (media) => {
     }
   }
 
-  // Basic path - with media/ prefix since that's the structure in GCP
   return `http://localhost:3001/api/media/direct-gcp?bucket=disinformation-game-images&path=${encodeURIComponent(`media/${media}`)}`;
 };
 
@@ -117,14 +112,14 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
   // Split the mediaFiles string if it's not already an array
   const mediaFilesArray = Array.isArray(mediaFiles) ? mediaFiles : mediaFiles.split("|").filter(Boolean);
 
-  // Inline SVG placeholders - these will always work
+  // Inline SVG placeholders
   const defaultAvatar = `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="16" cy="16" r="16" fill="#E5E7EB" />
     <path d="M16 8C13.791 8 12 9.791 12 12C12 14.209 13.791 16 16 16C18.209 16 20 14.209 20 12C20 9.791 18.209 8 16 8Z" fill="#9CA3AF" />
     <path d="M16 18C12.686 18 10 20.686 10 24H22C22 20.686 19.314 18 16 18Z" fill="#9CA3AF" />
   </svg>`;
 
-  // Media placeholder - using data URI to avoid network requests
+  // Media placeholder
   const mediaPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Cpath d='M65,45 L65,40 L60,40 L60,35 L40,35 L40,40 L35,40 L35,45 L30,45 L30,65 L70,65 L70,45 L65,45 Z M45,40 L55,40 L55,45 L45,45 L45,40 Z M65,60 L35,60 L35,50 L40,50 L40,55 L60,55 L60,50 L65,50 L65,60 Z' fill='%23d1d5db'/%3E%3C/svg%3E";
 
   const renderProfilePicture = () => {
@@ -147,7 +142,6 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
           onError={(e) => {
             console.log("Profile image failed to load:", profileSrc);
             e.target.style.display = "none";
-            // Keep the default avatar visible
           }}
         />
       </div>
@@ -155,7 +149,6 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
   };
 
   const renderMediaItem = (media, index) => {
-    // Get the optimized source URL
     const imgSrc = getMediaSrc(media);
     const hasError = mediaErrors[index];
     const isLoaded = mediaLoaded[index];
@@ -186,7 +179,6 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
 
             // Attempt to try a backup URL for GS URLs
             if (imgSrc.includes("direct-gcp") && !mediaErrors[index]) {
-              // Try the old approach as a fallback
               const backupSrc = `/api/media/images?path=${encodeURIComponent(media)}`;
               console.log(`Trying backup source: ${backupSrc}`);
               e.target.src = backupSrc;
@@ -204,7 +196,6 @@ function MessageCard({ message, onModerate, hideApproveButton, hideButtons, clic
     );
   };
 
-  // Only updating the return part of the component
 
   return (
     <div className={`rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm transition-all duration-300 ${clickable ? "cursor-pointer hover:bg-blue-50 hover:shadow-md" : ""} ${isExpanded ? "border-blue-300 shadow-lg" : ""}`} onClick={onClick ? onClick : undefined}>

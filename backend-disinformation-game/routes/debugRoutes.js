@@ -58,7 +58,6 @@ router.get('/storage/:bucketName', async (req, res) => {
   }
 });
 
-// Fixed route: Use a query parameter instead of a complex path parameter
 router.get('/storage/:bucketName/file', async (req, res) => {
   try {
     const bucketName = buckets[req.params.bucketName];
@@ -99,7 +98,6 @@ router.get('/storage/:bucketName/file', async (req, res) => {
 });
 
 
-// Add this function to your existing debugRoutes.js
 
 // Check a specific media file to see the exact path structure
 router.get('/test-media-path', async (req, res) => {
@@ -114,7 +112,6 @@ router.get('/test-media-path', async (req, res) => {
 
     console.log('Testing media path:', mediaPath);
 
-    // Try different bucket names
     const bucketNames = [
       'disinformation-game-images',
       'disinformation-game-media'
@@ -168,9 +165,7 @@ router.get('/test-media-path', async (req, res) => {
   }
 });
 
-// Add this new route to find and redirect to the first matching file:
 
-// Find a file by partial name and redirect to it
 router.get('/first-match', async (req, res) => {
   try {
     const prefix = req.query.prefix;
@@ -196,7 +191,7 @@ router.get('/first-match', async (req, res) => {
     );
     
     if (matchingFiles.length > 0) {
-      // If we found a match, stream it directly
+      // If  found  match, stream  directly
       const file = matchingFiles[0];
       console.log(`Found match: ${file.name}`);
       
@@ -219,12 +214,10 @@ router.get('/first-match', async (req, res) => {
   }
 });
 
-// Add these test routes at the end before the module.exports
 
 // Test GCP credentials
 router.get('/test-gcp-auth', async (req, res) => {
   try {
-    // Test if we can access basic bucket information
     const bucket = storage.bucket('disinformation-game-images');
     const [exists] = await bucket.exists();
     
@@ -284,12 +277,12 @@ router.get('/test-stream-image', async (req, res) => {
     const [metadata] = await file.getMetadata();
     res.setHeader('Content-Type', metadata.contentType);
     
-    // Stream the file
+    // Stream  file
     console.log('Streaming image file through backend...');
     file.createReadStream()
       .on('error', (err) => {
         console.error('Stream error:', err);
-        // Only send error if headers not sent yet
+       
         if (!res.headersSent) {
           res.status(500).json({
             success: false,
@@ -310,7 +303,7 @@ router.get('/test-stream-image', async (req, res) => {
   }
 });
 
-// List files in a specific path with pagination
+// List files in specific path
 router.get('/list-path', async (req, res) => {
   const prefix = req.query.prefix || 'media/';
   const maxResults = parseInt(req.query.limit || '10');

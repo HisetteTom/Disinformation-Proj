@@ -11,7 +11,6 @@ function App() {
 
   const handleGameReset = () => {
     setGameKey(Date.now());
-    // The setIsGameOver will now be handled in AppContent
   };
 
   useEffect(() => {

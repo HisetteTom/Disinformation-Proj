@@ -79,7 +79,7 @@ router.get("/money", async (req, res) => {
     // Get userId from the middleware
     const userId = req.user.userId;
 
-    // Fetch user from database with full details including money
+    // Fetch user from database with full details 
     const userRef = adminDb.collection("users").doc(userId);
     const userDoc = await userRef.get();
 
@@ -105,7 +105,7 @@ router.get('/tweets', async (req, res) => {
     const userId = req.user.userId;
     const { hashtag } = req.query;
     
-    // Get user's correctly answered tweets to filter them out
+    // Get user correctly answered tweets to filter them out
     const userDoc = await adminDb.collection('users').doc(userId).get();
     const userData = userDoc.exists ? userDoc.data() : {};
     const alreadyAnsweredTweets = userData.correctlyAnsweredTweets || [];
@@ -144,14 +144,14 @@ router.get('/tweets', async (req, res) => {
         }
       }
       
-      // Add all tweets that match hashtag filter (don't filter by answered tweets yet)
+      // Add all tweets that match hashtag filter 
       availableTweets.push({ 
         id: doc.id,
         ...tweetData 
       });
     });
     
-    // Separate into new tweets (not answered) and answered tweets
+    // Separate into new tweets and answered tweets
     const newTweets = availableTweets.filter(tweet => 
       !alreadyAnsweredTweets.includes(tweet.id)
     );
@@ -165,7 +165,7 @@ router.get('/tweets', async (req, res) => {
     // If we don't have enough new tweets, include some answered ones
     let finalTweets = [...newTweets];
     
-    if (finalTweets.length < 20) { // If less than 20 new tweets
+    if (finalTweets.length < 20) { 
       console.log(`Only ${finalTweets.length} new tweets available. Adding some previously answered tweets for replay.`);
       
       // Add some answered tweets to make the game playable
@@ -176,7 +176,6 @@ router.get('/tweets', async (req, res) => {
       console.log(`Added ${tweetsNeeded} previously answered tweets for replay`);
     }
     
-    // Prioritize unclassified tweets first
     const unclassifiedTweets = finalTweets.filter(tweet => 
       !tweet.is_disinfo || tweet.is_disinfo === ''
     );

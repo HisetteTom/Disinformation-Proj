@@ -4,7 +4,7 @@ const fs = require('fs');
 const { Storage } = require('@google-cloud/storage');
 const router = express.Router();
 
-// Initialize Google Cloud Storage with the same service account
+// Initialize GCP
 let storage;
 const keyPath = path.join(__dirname, '..', 'GCP_KEYS.json');
 
@@ -20,7 +20,6 @@ try {
   console.error('Failed to initialize GCP Storage:', error);
 }
 
-// Helper to check if a string is a URL
 function isUrl(str) {
   try {
     new URL(str);
@@ -30,9 +29,8 @@ function isUrl(str) {
   }
 }
 
-// Helper to normalize path separators
 function normalizePath(pathString) {
-  // Replace Windows backslashes with forward slashes for URL consistency
+  // Replace Windows backslashes with forward slashes
   return pathString ? pathString.replace(/\\/g, '/') : '';
 }
 
@@ -69,12 +67,11 @@ router.get('/:type', async (req, res) => {
       return res.status(500).send('Storage authentication failed');
     }
     
-    // Set CORS headers to avoid issues
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Special handling for profile pictures with gs:// path
     if (type === 'profiles' && mediaPath.startsWith('gs://')) {
       console.log('Handling GCP profile picture path:', mediaPath);
       
@@ -178,10 +175,9 @@ router.get('/:type', async (req, res) => {
         }
       }
       
-      return; // Important to exit after handling
+      return;
     }
     
-    // For media files that match the structure in GCP
     if (mediaPath.startsWith('media/')) {
       console.log('Found media path pattern in GCP structure');
       
@@ -229,7 +225,7 @@ router.get('/:type', async (req, res) => {
         }
       }
       
-      return; // Important to return here to end the request handling
+      return;
     }
     
     // For tweet_id as folder name structure
@@ -393,10 +389,9 @@ router.get('/:type', async (req, res) => {
   }
 });
 
-// Add this new route specifically for profiles with special characters
 router.get('/profile-direct', async (req, res) => {
   try {
-    // Set CORS headers - this is essential for browser to accept the response
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -409,7 +404,6 @@ router.get('/profile-direct', async (req, res) => {
     
     console.log(`Profile direct access: bucket=${bucketName}, path=${decodeURIComponent(objectPath)}`);
     
-    // Ensure storage is initialized
     if (!storage) {
       return res.status(500).send('Storage not initialized');
     }
@@ -444,12 +438,11 @@ router.get('/profile-direct', async (req, res) => {
         if (altExists) {
           console.log(`Found profile at alternative path: ${altPath}`);
           
-          // Set appropriate headers with proper caching
           const [metadata] = await altFile.getMetadata();
           if (metadata.contentType) {
             res.setHeader('Content-Type', metadata.contentType);
           }
-          res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+          res.setHeader('Cache-Control', 'public, max-age=86400'); 
           
           return altFile.createReadStream().pipe(res);
         }
@@ -458,12 +451,11 @@ router.get('/profile-direct', async (req, res) => {
       return res.status(404).send('Profile picture not found');
     }
     
-    // Set metadata and cache headers
     const [metadata] = await file.getMetadata();
     if (metadata.contentType) {
       res.setHeader('Content-Type', metadata.contentType);
     }
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+    res.setHeader('Cache-Control', 'public, max-age=86400'); 
     
     // Stream the file directly
     console.log('Streaming profile directly from GCP:', decodedPath);
@@ -477,14 +469,12 @@ router.get('/profile-direct', async (req, res) => {
   }
 });
 
-// Add a new crossorigin-friendly route
 router.get('/crossorigin-profile', async (req, res) => {
   try {
-    // These headers are essential to prevent CORS issues
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    res.setHeader('Access-Control-Max-Age', '86400'); 
     
     // Handle preflight OPTIONS requests
     if (req.method === 'OPTIONS') {
@@ -615,7 +605,6 @@ router.get('/profiles/direct', async (req, res) => {
         }
       }
       
-      // If we get here, we couldn't find any alternative
       return res.status(404).send('Profile not found');
     }
     
@@ -636,7 +625,6 @@ router.get('/profiles/direct', async (req, res) => {
   }
 });
 
-// Also add a simple endpoint for basic profile paths
 router.get('/profiles/simple', async (req, res) => {
   try {
     const { path: profilePath } = req.query;

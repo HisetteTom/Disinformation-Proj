@@ -39,7 +39,7 @@ export const register = async (email, password, username) => {
       body: JSON.stringify({
         username,
         email,
-        password, // The backend will ignore this since Firebase already handles auth
+        password,
       }),
     });
 
@@ -114,7 +114,7 @@ export const updateUserStats = async (stats) => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        stats: stats, // Wrap stats in an object with "stats" property
+        stats: stats, 
       }),
     });
 
@@ -198,8 +198,8 @@ export const saveCorrectlyAnsweredTweets = async (tweetIds) => {
     console.log("API response for saving tweets:", result);
     return result;
   } catch (error) {
+    //Debug
     console.error("Error saving correctly answered tweets:", error);
-    // Log the full error object for debugging
     console.error("Error details:", {
       name: error.name,
       message: error.message,

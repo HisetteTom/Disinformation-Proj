@@ -8,7 +8,6 @@ require('dotenv').config();          // Charge les variables d'environnement dep
  */
 async function searchNewsArticles(query, maxResults = 5) {
   try {
-    // Récupération de la clé API depuis les variables d'environnement
     const API_KEY = process.env.NEWS_API_KEY;
     
     // Vérification de l'existence de la clé API

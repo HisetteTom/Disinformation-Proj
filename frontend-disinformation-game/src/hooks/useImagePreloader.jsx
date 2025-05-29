@@ -12,7 +12,6 @@ export function useImagePreloader() {
     total: 0,
   });
 
-  // We'll use a ref to track which images we're already loading
   const loadingImagesRef = useRef(new Set());
 
   const preloadImages = useCallback((imageSources) => {

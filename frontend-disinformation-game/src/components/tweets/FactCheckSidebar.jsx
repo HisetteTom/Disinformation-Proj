@@ -15,7 +15,7 @@ function FactCheckSidebar({
 
   useEffect(() => {
     if (isOpen) {
-      // Small delay for animation to work properly
+      // Small delay for animation
       const timer = setTimeout(() => {
         setAnimationClass("translate-x-0");
       }, 50);

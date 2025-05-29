@@ -11,7 +11,6 @@ async def download_profile_to_memory(session, profile_url):
     try:
         async with session.get(profile_url) as response:
             if response.status == 200:
-                # Return the binary content directly
                 return await response.read()
     except Exception as e:
         print(f"Error downloading profile picture: {e}")
@@ -26,7 +25,6 @@ async def download_media_to_memory(session, media_url):
     try:
         async with session.get(media_url) as response:
             if response.status == 200:
-                # Return the binary content directly
                 return await response.read()
     except Exception as e:
         print(f"Error downloading media: {e}")
@@ -44,7 +42,6 @@ def get_tweet_folder_structure(tweet_id):
     id_str = str(tweet_id)
     
     # Use groups of 3 digits to create folders
-    # For example: 123456789 -> 123/456/789
     folder_path = "/".join([id_str[i:i+3] for i in range(0, min(9, len(id_str)), 3)])
     return folder_path
 

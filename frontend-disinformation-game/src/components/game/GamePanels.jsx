@@ -46,7 +46,6 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
         )}
 
         <div className="mb-2 flex items-center justify-center space-x-2">
-          {/* Truth Token icon */}
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 3h18v4H14v14h-4V7H3V3z" />
           </svg>
@@ -152,7 +151,6 @@ export function GameOver({ score, messagesHandled, onPlayAgain, scoreBreakdown, 
           Back to Home
         </button>
         <button onClick={() => setShop(true)} className="flex transform items-center rounded-lg bg-[#FF6B35]/20 px-4 py-3 font-bold text-white shadow-md transition hover:scale-105 hover:bg-[#FF6B35]/30 border border-[#FF6B35]/30 hover:border-[#FF6B35]/50">
-          {/* Truth Token icon instead of dollar sign */}
           <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5 text-[#FF6B35]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 3h18v4H14v14h-4V7H3V3z" />
           </svg>

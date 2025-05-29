@@ -2,6 +2,8 @@ import os
 import time
 import pyautogui
 
+#NOT USED ANYMORE, ON THE WEBSITE
+
 def view_image(image_path):
     """Display an image and automatically focus back to console"""
     # Check if we need to adjust the path to look in parent directory
@@ -16,7 +18,6 @@ def view_image(image_path):
             return False
     
     try:
-        # On Windows, use the default image viewer via os.startfile
         os.startfile(image_path)
         
         # Try to refocus using Alt+Tab
@@ -41,11 +42,9 @@ def view_image(image_path):
 def close_image_viewers():
     """Close all common image viewer applications"""
     try:
-        # The actual process name is just "Photos"
         print("Closing Photos viewer...")
         os.system('taskkill /f /im Photos.exe')
         
-        # This PowerShell command works to find processes with "Photo" in the name
         os.system('powershell "Get-Process | Where-Object {$_.ProcessName -like \'*Photo*\'} | Stop-Process -Force"')
 
         # Short wait

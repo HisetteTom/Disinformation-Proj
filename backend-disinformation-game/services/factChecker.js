@@ -16,15 +16,12 @@ function generateFactCheckQueries(keywords) {
     word.replace(/^#/, '').replace(/[^\w\s]/g, '').toLowerCase()
   );
   
-  // Set up meaningful query combinations
-  // 1. Single key terms (Google API works best with simple queries)
   cleanKeywords.slice(0, Math.min(3, cleanKeywords.length)).forEach(term => {
     queries.push(term);
   });
   
-  // 2. Two-word pairs
   if (cleanKeywords.length >= 2) {
-    // Try different pairs - don't use Boolean operators
+    // Try different pairs 
     for (let i = 0; i < Math.min(3, cleanKeywords.length); i++) {
       for (let j = i+1; j < Math.min(4, cleanKeywords.length); j++) {
         const pair = `${cleanKeywords[i]} ${cleanKeywords[j]}`;
@@ -35,7 +32,6 @@ function generateFactCheckQueries(keywords) {
     }
   }
   
-  // 3. Add "fact check" to the most important term if available
   if (cleanKeywords.length > 0) {
     queries.push(`${cleanKeywords[0]} fact`);
   }
@@ -56,41 +52,35 @@ function generateNewsQueries(keywords) {
     word.replace(/^#/, '').replace(/[^\w\s]/g, '').toLowerCase()
   );
   
-  // News API handles Boolean operators well - use them
   
-  // 1. Single term queries for key topics
   if (cleanKeywords.length > 0) {
     queries.push(cleanKeywords[0]);
   }
   
-  // 2. Two terms with AND between important keywords
   if (cleanKeywords.length >= 2) {
     queries.push(`${cleanKeywords[0]} AND ${cleanKeywords[1]}`);
   }
   
-  // 3. First term AND any of the other terms (useful for qualifying searches)
   if (cleanKeywords.length >= 3) {
     const others = cleanKeywords.slice(1, 4).join(' OR ');
     queries.push(`${cleanKeywords[0]} AND (${others})`);
   }
   
-  // 4. Mixed OR terms for broader results when specific terms don't match
   if (cleanKeywords.length >= 2) {
     queries.push(cleanKeywords.slice(0, 3).join(' OR '));
   }
   
-  return [...new Set(queries)].slice(0, 5); // Unique queries, max 5
+  return [...new Set(queries)].slice(0, 5); 
 }
 
 /**
- * Ultra-simplified search for Google Fact Check API
+ * simplified search for Google Fact Check API
  * @param {string} query - Search query
  * @param {string} apiKey - Google API key
  * @returns {Promise<Object>} - Fact check results
  */
 async function searchFactCheck(query, apiKey) {
   try {
-    // Make the query ultra-simple
     // Take only first few words, remove all special chars
     let cleanedQuery = query
       .replace(/['"(){}\[\]]/g, '')        // Remove brackets and quotes

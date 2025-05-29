@@ -53,11 +53,9 @@ function extractKeyTerms(text, maxKeywords = 5) {
     );
   });
   
-  // Also extract words from hashtags (e.g., #nomasks → "no" and "masks")
+  //  extract words from hashtags 
   let hashtagWords = [];
   for (const tag of hashtags) {
-    // Try to break compound hashtags into words
-    // First check for camelCase: #NoMasks
     const camelCaseWords = tag.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ');
     
     // Also try to find common words within the hashtag
@@ -108,13 +106,10 @@ function extractKeyTerms(text, maxKeywords = 5) {
     { medical: [], scientific: [], claim: [], other: [] }
   );
   
-  // Create balanced keyword list with priorities:
-  // 1. Include medical terms first (most important)
-  // 2. Include some scientific and claim terms
-  // 3. Include a few other high-frequency terms
+  
   const result = [];
   
-  // Start with medical terms (highest priority)
+  // Start with medical terms
   if (categorizedWords.medical.length > 0) {
     // Sort medical terms by frequency
     const sortedMedical = categorizedWords.medical.sort(

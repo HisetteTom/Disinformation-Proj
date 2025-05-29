@@ -1,4 +1,5 @@
 import os
+# NOT USED ANYMORE, ON THE WEBSITE
 
 def select_csv_file():
     """Let user select a CSV file from the parent directory"""

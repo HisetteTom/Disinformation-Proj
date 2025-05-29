@@ -7,7 +7,7 @@ const router = express.Router();
 
 console.log('userRoutes loaded!');
 
-// Register a new user - already authenticated by Firebase
+// Register a new user
 router.post('/register', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId; // Get userId from verified token
@@ -34,9 +34,7 @@ router.post('/register', authMiddleware, async (req, res) => {
   }
 });
 
-// No need for a separate login endpoint - Firebase handles this
 
-// Update user stats (protected route)
 router.post('/stats', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
