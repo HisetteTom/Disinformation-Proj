@@ -1,7 +1,7 @@
 aiohttp==3.12.15
-pandas==2.2.3
+pandas==2.3.2
 Pillow==11.2.1
-protobuf==6.31.1
+protobuf==6.32.1
 pyautogui==0.9.54
 python_magic==0.4.27
 twikit==2.3.3
