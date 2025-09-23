@@ -4,16 +4,28 @@ updates:
   - package-ecosystem: "pip"
     directory: "/python-backend" # path to requirements.txt
     schedule:
-      interval: "daily"
+      interval: "weekly"
+
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
 
   # NPM backend
   - package-ecosystem: "npm"
     directory: "/backend-disinformation-game" # path to package.json
     schedule:
-      interval: "daily"
-
+      interval: "weekly"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
   # NPM frontend
   - package-ecosystem: "npm"
     directory: "/frontend-disinformation-game" # path to package.json
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
