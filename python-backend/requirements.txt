@@ -1,5 +1,5 @@
 aiohttp==3.12.15
-pandas==2.3.2
+pandas==2.3.3
 Pillow==11.3.0
 protobuf==6.32.1
 pyautogui==0.9.54
