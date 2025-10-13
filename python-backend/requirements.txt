@@ -1,4 +1,4 @@
-aiohttp==3.12.15
+aiohttp==3.13.0
 pandas==2.3.3
 Pillow==11.3.0
 protobuf==6.32.1
