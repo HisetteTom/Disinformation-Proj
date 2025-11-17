@@ -11,18 +11,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@google-cloud/storage": "^7.17.2",
-    "axios": "^1.12.2",
+    "@google-cloud/storage": "^7.17.3",
+    "axios": "^1.13.2",
     "cor": "^0.0.0",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "firebase": "^12.4.0",
-    "firebase-admin": "^13.5.0",
+    "firebase": "^12.6.0",
+    "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.2",
     "keyword-extractor": "^0.0.28",
     "natural": "^8.1.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.11"
   }
 }
